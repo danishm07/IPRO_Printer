@@ -4,7 +4,7 @@
 # gives that branch its own preview link.
 name: Studio build
 # The Studio finds a proposal's run by this name when someone presses Cancel.
-run-name: Proposal #${{ github.event.issue.number }}
+run-name: "Proposal #${{ github.event.issue.number }}"
 
 on:
   issues:
