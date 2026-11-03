@@ -74,6 +74,8 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ github.token }}
+          # Show Claude's messages in the Actions log so failed builds can be diagnosed.
+          show_full_output: true
           prompt: |
             You are building one design proposal for the ZQ630 Plus 3D viewer. Read CLAUDE.md first and follow its rules.
             The request is in .studio/request.md. It may include follow-ups; the latest one wins when they conflict.

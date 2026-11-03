@@ -491,6 +491,9 @@ h1 {
   .modeswitch { top: auto; bottom: 64px; }
   .toolbar { left: 16px; bottom: 14px; right: 16px; }
   .hint { display: none; }
+  /* With the panel hidden the model fills the whole frame instead of the top 60% */
+  .app.no-panel { grid-template-rows: minmax(0, 1fr); height: 100%; }
+  .app.no-panel .modeswitch { top: 20px; bottom: auto; }
 }
 @media (prefers-reduced-motion: reduce) {
   .part, .pin, .modeswitch .pill, .cmp, .tab { transition: none; }
