@@ -1915,7 +1915,7 @@ function roundedKeyGeometry() {
 }
 
 const KEY_CUR_COLOR = new THREE.Color(0x181b1e);
-const KEY_PL_COLOR = new THREE.Color(0x262c30);
+const KEY_PL_COLOR = new THREE.Color(0xe8559a);
 const GLYPH_CUR_COLOR = new THREE.Color(0xaeb7bd);
 const GLYPH_PL_COLOR = new THREE.Color(0xeef3f0);
 const KEY_GLOW = new THREE.Color(0x3c7a6c);
@@ -2057,14 +2057,14 @@ function buildPort() {
   tongue.position.set(-8 * MM, 0, 0.3 * MM);
   root.add(tongue);
 
-  // planned: yellow slider with grip ridges
+  // planned: pink slider with grip ridges
   const slider = new THREE.Group();
-  const yellow = new THREE.MeshStandardMaterial({ color: 0xf2c230, roughness: 0.45 });
-  const body = new THREE.Mesh(new THREE.BoxGeometry(17 * MM, 11.5 * MM, 2.2 * MM), yellow);
+  const pinkMaterial = new THREE.MeshStandardMaterial({ color: 0xff6eb4, roughness: 0.45 });
+  const body = new THREE.Mesh(new THREE.BoxGeometry(17 * MM, 11.5 * MM, 2.2 * MM), pinkMaterial);
   body.position.z = 1.1 * MM;
   slider.add(body);
   for (let i = -1; i <= 1; i++) {
-    const ridge = new THREE.Mesh(new THREE.BoxGeometry(0.9 * MM, 8 * MM, 0.8 * MM), new THREE.MeshStandardMaterial({ color: 0xd9a91f, roughness: 0.5 }));
+    const ridge = new THREE.Mesh(new THREE.BoxGeometry(0.9 * MM, 8 * MM, 0.8 * MM), new THREE.MeshStandardMaterial({ color: 0xd63c8a, roughness: 0.5 }));
     ridge.position.set((3 + i * 2.2) * MM, 0, 2.5 * MM);
     slider.add(ridge);
   }
