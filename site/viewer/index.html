@@ -1,0 +1,2644 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>
+:root { color-scheme: light; }
+body { margin: 0; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<title>ZQ630 Plus Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a 3D bench (stage) beside a concept ledger. Palette follows the group deck: slate, sage green, terracotta, warm paper. */
+:root {
+  --paper: #f3f2ef;
+  --panel: #ffffff;
+  --ink: #33454a;
+  --muted: #6f7a7c;
+  --rule: #dcdfdb;
+  --grid: rgba(51, 69, 74, 0.06);
+  --stage: #ebeae6;
+  --accent: #3c7a6c;
+  --accent-ink: #2f6458;
+  --accent-soft: #e2ece8;
+  --clay: #d8a796;
+  --clay-soft: #f3e4dd;
+  --chip: #33454a;
+  --chip-fg: #ffffff;
+  --present-bg: #36464a;
+  --font-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #263234;
+    --panel: #2c393c;
+    --ink: #eef0ec;
+    --muted: #a3afae;
+    --rule: #3c4c4f;
+    --grid: rgba(238, 240, 236, 0.05);
+    --stage: #2f3d40;
+    --accent: #7dbfae;
+    --accent-ink: #9fd3c5;
+    --accent-soft: rgba(125, 191, 174, 0.15);
+    --clay: #e2ae9c;
+    --clay-soft: rgba(226, 174, 156, 0.16);
+    --chip: #eef0ec;
+    --chip-fg: #263234;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #263234;
+  --panel: #2c393c;
+  --ink: #eef0ec;
+  --muted: #a3afae;
+  --rule: #3c4c4f;
+  --grid: rgba(238, 240, 236, 0.05);
+  --stage: #2f3d40;
+  --accent: #7dbfae;
+  --accent-ink: #9fd3c5;
+  --accent-soft: rgba(125, 191, 174, 0.15);
+  --clay: #e2ae9c;
+  --clay-soft: rgba(226, 174, 156, 0.16);
+  --chip: #eef0ec;
+  --chip-fg: #263234;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.45;
+}
+button { font-family: inherit; }
+.app {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 410px;
+  height: 100%;
+}
+
+/* ---------- stage ---------- */
+.stage {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  background-color: var(--stage);
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+  transition: background-color 0.4s;
+}
+.stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.stage.over-key canvas { cursor: pointer; }
+.stage-head {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 20px 24px;
+  pointer-events: none;
+}
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-ink);
+  font-weight: 500;
+}
+.ledger-head { margin-bottom: 16px; }
+h1 {
+  margin: 2px 0 0;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 34px;
+  line-height: 0.98;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+
+/* Current / Planned switch */
+.modeswitch {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  box-shadow: 0 6px 22px rgba(30, 40, 42, 0.12);
+  z-index: 3;
+}
+.modeswitch .pill {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc(50% - 4px);
+  border-radius: 999px;
+  background: var(--clay);
+  transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1), background 0.45s;
+}
+.modeswitch[data-mode="planned"] .pill { transform: translateX(100%); background: var(--accent); }
+.modeswitch button {
+  position: relative;
+  border: 0;
+  background: none;
+  padding: 8px 22px;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  cursor: pointer;
+  border-radius: 999px;
+  transition: color 0.3s;
+}
+.modeswitch button[aria-pressed="true"] { color: #ffffff; }
+
+.toolbar {
+  position: absolute;
+  left: 24px;
+  bottom: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  z-index: 2;
+}
+.tool {
+  font: 500 12px var(--font-mono);
+  letter-spacing: 0.03em;
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 7px 11px;
+  cursor: pointer;
+}
+.tool:hover { border-color: var(--ink); }
+.tool[aria-pressed="true"] { background: var(--ink); color: var(--panel); border-color: var(--ink); }
+.tool:focus-visible, .tab:focus-visible, .pad button:focus-visible, .modeswitch button:focus-visible { outline: 2px solid var(--clay); outline-offset: 2px; }
+.hint {
+  position: absolute;
+  right: 24px;
+  bottom: 24px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+.loading[hidden] { display: none; }
+.loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* caption used in presentation mode */
+.caption {
+  position: absolute;
+  left: 40px;
+  bottom: 36px;
+  display: none;
+  color: #ffffff;
+  pointer-events: none;
+}
+.caption .c-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #e7b9a8;
+  font-weight: 500;
+}
+.caption .c-title {
+  margin-top: 6px;
+  font-weight: 800;
+  font-size: clamp(26px, 3.2vw, 40px);
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  max-width: 22ch;
+  text-wrap: balance;
+}
+.present-exit {
+  position: absolute;
+  right: 20px;
+  top: 20px;
+  display: none;
+  border: 0;
+  border-radius: 6px;
+  padding: 7px 11px;
+  font: 500 12px var(--font-mono);
+  color: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  z-index: 3;
+}
+
+/* pins + callout (specs tab) */
+.pin {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  border-radius: 50%;
+  background: var(--clay);
+  box-shadow: 0 0 0 3px var(--clay-soft), 0 0 0 1px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  transition: opacity 0.2s, transform 0.2s;
+}
+.pin.is-hidden { opacity: 0; }
+.pin.is-active { transform: scale(1.5); }
+.callout {
+  position: absolute;
+  transform: translate(14px, -50%);
+  background: var(--chip);
+  color: var(--chip-fg);
+  border-radius: 6px;
+  padding: 7px 10px 8px;
+  pointer-events: none;
+  white-space: nowrap;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+}
+.callout .c-name { font-weight: 700; font-size: 16px; line-height: 1.1; }
+.callout .c-val { font-family: var(--font-mono); font-size: 11px; opacity: 0.85; margin-top: 3px; }
+.stage:not(.specs) .pin, .stage:not(.specs) .callout { display: none; }
+
+/* ---------- ledger ---------- */
+.ledger {
+  min-width: 0;
+  overflow-y: auto;
+  background: var(--panel);
+  border-left: 1px solid var(--rule);
+  padding-block: 18px 28px;
+  padding-inline: 22px;
+}
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 20px;
+}
+.tab {
+  border: 1px solid var(--rule);
+  background: var(--panel);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+.tab:hover { color: var(--ink); border-color: var(--ink); }
+.tab[aria-selected="true"] { background: var(--ink); color: var(--panel); border-color: var(--ink); }
+.view[hidden] { display: none; }
+.view h2 {
+  margin: 6px 0 14px;
+  font-weight: 800;
+  font-size: 26px;
+  line-height: 1.08;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+.compare { display: grid; gap: 8px; margin-bottom: 18px; }
+.cmp {
+  border-radius: 8px;
+  padding: 11px 13px 12px;
+  border: 1px solid var(--rule);
+  transition: opacity 0.3s, border-color 0.3s, background 0.3s;
+}
+.cmp .tag {
+  display: inline-block;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 4px;
+  margin-bottom: 6px;
+}
+.cmp.current .tag { background: var(--clay-soft); color: var(--ink); }
+.cmp.planned .tag { background: var(--accent); color: #ffffff; }
+.cmp p { margin: 0; font-size: 14px; }
+.app[data-mode="current"] .cmp.planned { opacity: 0.5; }
+.app[data-mode="planned"] .cmp.current { opacity: 0.5; }
+.app[data-mode="current"] .cmp.current { border-color: var(--clay); }
+.app[data-mode="planned"] .cmp.planned { border-color: var(--accent); background: var(--accent-soft); }
+.block-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 18px 0 8px;
+}
+
+/* on-page keypad mirror */
+.pad {
+  display: grid;
+  grid-template-columns: repeat(5, 44px);
+  grid-template-rows: repeat(3, 44px);
+  gap: 6px;
+  justify-content: start;
+}
+.pad button {
+  border: 1px solid var(--rule);
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  transition: transform 0.08s, background 0.15s;
+}
+.pad button:active, .pad button.flash { transform: scale(0.92); background: var(--accent-soft); }
+.pad .soft { font-size: 11px; letter-spacing: 0.04em; }
+.keys-hint { margin-top: 8px; font-size: 12px; color: var(--muted); }
+.keys-hint kbd {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  border: 1px solid var(--rule);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  padding: 0 4px;
+}
+
+/* task timer */
+.task {
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 12px 13px;
+}
+.task-goal { font-weight: 700; font-size: 14px; }
+.task-rows {
+  display: grid;
+  grid-template-columns: max-content 1fr 1fr;
+  gap: 4px 14px;
+  margin-top: 8px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.task-rows .h { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.task-rows .done { color: var(--accent-ink); font-weight: 700; }
+.task-actions { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* sliders */
+.ctl { display: grid; gap: 4px; margin-bottom: 14px; }
+.ctl label { display: flex; justify-content: space-between; font-weight: 600; font-size: 13.5px; }
+.ctl label span { font-family: var(--font-mono); font-weight: 500; color: var(--muted); font-variant-numeric: tabular-nums; }
+.ctl input[type="range"] { width: 100%; accent-color: var(--accent); }
+.ctl input:disabled { opacity: 0.4; }
+.ctl .sub { font-size: 12px; color: var(--muted); }
+.meter { height: 8px; border-radius: 4px; background: var(--rule); overflow: hidden; }
+.meter i { display: block; height: 100%; background: var(--accent); border-radius: 4px; transition: width 0.2s; }
+.check { display: flex; gap: 8px; align-items: center; font-weight: 600; font-size: 13.5px; }
+
+.big-btn {
+  border: 0;
+  border-radius: 8px;
+  padding: 10px 16px;
+  background: var(--ink);
+  color: var(--panel);
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+/* specs view */
+.summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--rule);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 18px;
+}
+.stat { background: var(--panel); padding: 10px 12px; }
+.stat b { display: block; font-weight: 700; font-size: 20px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.stat span { font-size: 12px; color: var(--muted); }
+.parts { display: flex; flex-direction: column; gap: 8px; }
+.part {
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 11px 13px 12px;
+  cursor: pointer;
+  background: var(--panel);
+  transition: opacity 0.18s, border-color 0.18s, background 0.18s, box-shadow 0.18s;
+}
+.parts.has-active .part { opacity: 0.42; }
+.parts.has-active .part.is-active { opacity: 1; border-color: var(--clay); background: var(--clay-soft); box-shadow: inset 4px 0 0 var(--clay); }
+.part-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.part h3 { margin: 0; font-weight: 700; font-size: 17px; line-height: 1.15; }
+.where { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+.key { font-family: var(--font-mono); font-size: 13px; font-weight: 500; margin: 3px 0 7px; font-variant-numeric: tabular-nums; }
+.part.is-active .key { color: var(--ink); font-weight: 600; }
+.rows { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 3px 12px; margin: 0; font-size: 12.5px; }
+.rows dt { color: var(--muted); }
+.rows dd { margin: 0; font-variant-numeric: tabular-nums; }
+.part.is-active .rows dd { font-weight: 600; }
+.foot { margin-top: 20px; font-size: 11.5px; color: var(--muted); }
+.foot a { color: var(--muted); }
+
+/* ---------- details panel hidden (Details button, or ?embed=1 inside the Studio) ---------- */
+.app.no-panel { grid-template-columns: minmax(0, 1fr); }
+.app.no-panel .ledger { display: none; }
+
+/* ---------- presentation mode ---------- */
+.app.presenting { grid-template-columns: minmax(0, 1fr); }
+.app.presenting .ledger,
+.app.presenting .toolbar,
+.app.presenting .hint { display: none; }
+.app.presenting .stage { background-color: var(--present-bg); background-image: none; }
+.app.presenting.bg-light .stage { background-color: #f3f2ef; }
+.app.presenting.bg-light .caption { color: #33454a; }
+.app.presenting.bg-light .caption .c-eyebrow { color: #3c7a6c; }
+.app.presenting .caption,
+.app.presenting .present-exit { display: block; }
+.app.presenting.clean .caption,
+.app.presenting.clean .modeswitch,
+.app.presenting.clean .present-exit { display: none; }
+
+@media (max-width: 860px) {
+  .app { grid-template-columns: minmax(0, 1fr); grid-template-rows: 60vh auto; height: auto; }
+  .ledger { border-left: 0; border-top: 1px solid var(--rule); overflow: visible; }
+  .modeswitch { top: auto; bottom: 64px; }
+  .toolbar { left: 16px; bottom: 14px; right: 16px; }
+  .hint { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .part, .pin, .modeswitch .pill, .cmp, .tab { transition: none; }
+}
+</style>
+
+<div class="app" id="app" data-mode="current">
+  <section class="stage" id="stage" aria-label="3D model of the printer">
+    <div class="modeswitch" id="modeswitch" data-mode="current" role="group" aria-label="Design version">
+      <span class="pill"></span>
+      <button type="button" id="mode-current" aria-pressed="true">Current</button>
+      <button type="button" id="mode-planned" aria-pressed="false">Planned</button>
+    </div>
+    <div class="loading" id="loading">Loading model…</div>
+    <div class="toolbar">
+      <button class="tool" id="btn-reset" type="button">Reset view</button>
+      <button class="tool" id="btn-spin" type="button" aria-pressed="true">Auto-rotate</button>
+      <button class="tool" id="btn-clay" type="button" aria-pressed="false">Clay</button>
+      <button class="tool" id="btn-raw" type="button" aria-pressed="false">Raw scan</button>
+      <button class="tool" id="btn-present" type="button">Present</button>
+      <button class="tool" id="btn-panel" type="button" aria-pressed="true">Details</button>
+    </div>
+    <div class="hint">Drag to orbit · scroll to zoom · click the screen or keys</div>
+    <div class="caption" id="caption">
+      <div class="c-eyebrow" id="cap-eyebrow"></div>
+      <div class="c-title" id="cap-title"></div>
+    </div>
+    <button class="present-exit" id="present-exit" type="button">Esc · exit</button>
+  </section>
+
+  <aside class="ledger">
+    <div class="ledger-head">
+      <div class="eyebrow">IPRO 497 · Group 1</div>
+      <h1>ZQ630 Plus</h1>
+    </div>
+    <div class="tabs" role="tablist" id="tabs"></div>
+
+    <section class="view" id="view-interface">
+      <div class="eyebrow">01 / Interface</div>
+      <h2>A clearer path through the printer.</h2>
+      <div class="compare">
+        <div class="cmp current"><span class="tag">Current</span><p>Status sits inside icon menus, and each submenu takes several steps.</p></div>
+        <div class="cmp planned"><span class="tag">Planned</span><p>An idle status screen shows battery, media, Wi-Fi and IP at a glance. Settings open as a clear list.</p></div>
+      </div>
+      <div class="block-label">Drive the screen</div>
+      <div class="pad" id="pad-interface"></div>
+      <p class="keys-hint">Or use <kbd>←</kbd><kbd>↑</kbd><kbd>→</kbd><kbd>↓</kbd> <kbd>Enter</kbd> and <kbd>Q</kbd>/<kbd>E</kbd> for the soft keys. Click the keys on the model too.</p>
+      <div class="block-label">Task</div>
+      <div class="task">
+        <div class="task-goal">Change Darkness from 7.0 to 8.0 and save</div>
+        <div class="task-rows">
+          <span></span><span class="h">Presses</span><span class="h">Time</span>
+          <span>Current</span><span id="t-cur-p">–</span><span id="t-cur-t">–</span>
+          <span>Planned</span><span id="t-pl-p">–</span><span id="t-pl-t">–</span>
+        </div>
+        <div class="task-actions"><button class="tool" id="task-reset" type="button">Reset task</button></div>
+      </div>
+    </section>
+
+    <section class="view" id="view-controls" hidden>
+      <div class="eyebrow">02 / Controls</div>
+      <h2>Make each press easier to target.</h2>
+      <div class="compare">
+        <div class="cmp current"><span class="tag">Current</span><p>Small keys packed tightly around the OK button.</p></div>
+        <div class="cmp planned"><span class="tag">Planned</span><p>Larger keys with deliberate spacing and a clear press.</p></div>
+      </div>
+      <div class="block-label">Press the keys</div>
+      <div class="pad" id="pad-controls"></div>
+      <div class="block-label">Planned layout</div>
+      <dl class="rows">
+        <dt>Arrow and OK keys</dt><dd>8.4 mm square</dd>
+        <dt>Gap between keys</dt><dd>1.8 mm</dd>
+        <dt>Soft keys</dt><dd>8 × 5.2 mm, set wide</dd>
+        <dt>Travel</dt><dd>Animated 1 mm press with rebound</dd>
+      </dl>
+    </section>
+
+    <section class="view" id="view-display" hidden>
+      <div class="eyebrow">03 / Display</div>
+      <h2>Let the screen meet the user.</h2>
+      <div class="compare">
+        <div class="cmp current"><span class="tag">Current</span><p>Fixed angle and fixed brightness. Washes out in bright light.</p></div>
+        <div class="cmp planned"><span class="tag">Planned</span><p>Tilts toward the user and raises brightness with ambient light.</p></div>
+      </div>
+      <div class="ctl">
+        <label for="sl-sun">Ambient light <span id="v-sun">Indoor</span></label>
+        <input type="range" id="sl-sun" min="0" max="100" value="0">
+      </div>
+      <div class="ctl">
+        <label for="sl-tilt">Screen tilt <span id="v-tilt">0°</span></label>
+        <input type="range" id="sl-tilt" min="0" max="35" value="0" disabled>
+        <span class="sub" id="tilt-sub">Fixed in the current design.</span>
+      </div>
+      <label class="check"><input type="checkbox" id="cb-auto" checked disabled> Adaptive brightness</label>
+      <p class="keys-hint">Shortcuts: <kbd>S</kbd> sunlight, <kbd>T</kbd> tilt.</p>
+      <div class="block-label">Simulated legibility</div>
+      <div class="meter"><i id="legibility" style="width: 100%"></i></div>
+    </section>
+
+    <section class="view" id="view-port" hidden>
+      <div class="eyebrow">04 / Port cover</div>
+      <h2>Make the cover easier to operate.</h2>
+      <div class="compare">
+        <div class="cmp current"><span class="tag">Current</span><p>A rubber flap you pry open to reach the port.</p></div>
+        <div class="cmp planned"><span class="tag">Planned</span><p>A sliding cover with a grip and a secure close.</p></div>
+      </div>
+      <button class="big-btn" id="btn-cover" type="button">Open cover</button>
+      <p class="keys-hint">Shortcut: <kbd>O</kbd></p>
+    </section>
+
+    <section class="view" id="view-specs" hidden>
+      <div class="summary">
+        <div class="stat"><b>1.1 kg</b><span>2.45 lb with battery</span></div>
+        <div class="stat"><b>IP54</b><span>dust and water</span></div>
+        <div class="stat"><b>6 ft</b><span>repeated drops to concrete</span></div>
+        <div class="stat"><b>−20 to 50 °C</b><span>operating range</span></div>
+      </div>
+      <p class="block-label">Parts · hover or tap</p>
+      <div class="parts" id="parts"></div>
+      <p class="foot">
+        Specs from Zebra's
+        <a href="https://dmsiworks.com/wp-content/uploads/ZQ630-Datasheet.pdf" target="_blank" rel="noopener">ZQ630 Plus RFID spec sheet</a>.
+        Model scanned by the team and scaled to the official 186.7 × 165.1 × 82.5 mm.
+        Not affiliated with Zebra Technologies.
+      </p>
+    </section>
+  </aside>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+// =====================================================================
+// Data
+// =====================================================================
+// Part regions in model millimetres (x = length, y = up, z = width). Origin: centre of footprint, y = 0 at the underside.
+const PARTS = [
+  { id: "display", name: "Color display", where: "Top", key: "288 × 240 px color",
+    rows: [["Glass", "Tempered"], ["Alerts", "Color-coded on screen"], ["UI", "Link-OS menu, customizable via WML"]],
+    box: [[21, 50, -25], [60, 90, 28]], view: [0.3, 1, 0.13] },
+  { id: "keypad", name: "Navigation keys", where: "Top", key: "5-way + 2 soft keys",
+    rows: [["Layout", "D-pad with center OK"], ["Soft keys", "Software-defined"]],
+    box: [[58, 40, -28], [88, 82, 28]], view: [0.55, 1, 0] },
+  { id: "power", name: "Power and feed", where: "Front end", key: "2 buttons",
+    rows: [["Power", "On / off"], ["Feed", "Advances media"]],
+    box: [[86, 12, -18], [100, 50, 38]], view: [1, 0.35, 0] },
+  { id: "printhead", name: "Print head and tear bar", where: "Top", key: "203 dpi · 4.1 in wide",
+    rows: [["Method", "Direct thermal"], ["Max width", "4.1 in / 104 mm"], ["Max speed", "4.5 in / 115 mm per s"], ["Modes", "Tear bar, peel-and-present"]],
+    box: [[-15, 42, -58], [15, 90, 62]], view: [0, 1, 0.2] },
+  { id: "media", name: "Media bay", where: "Top", key: "2.6 in / 66 mm roll",
+    rows: [["Media width", "2.0–4.4 in (51–112 mm)"], ["Core", "0.75 in or 1.375 in"], ["Sensing", "Black mark, label present"], ["RFID", "UHF EPC Gen 2 V2, RAIN"]],
+    box: [[-92, 28, -58], [-15, 90, 62]], view: [-0.35, 1, 0] },
+  { id: "latch", name: "Media cover latch", where: "Left side", key: "Yellow release",
+    rows: [["Loading", "Clamshell, center-loading"]],
+    box: [[6, 4, -90], [34, 88, -52]], view: [0, 0.35, -1] },
+  { id: "ports", name: "Port cover", where: "Left side", key: "USB 2.0 · 12 Mbps",
+    rows: [["Ethernet", "10/100 via charging cradle"], ["Label", "Driver warning sticker"]],
+    box: [[38, 12, -90], [80, 62, -55]], view: [0, 0.3, -1] },
+  { id: "nfc", name: "Print Touch (NFC)", where: "Right side", key: "Tap to pair",
+    rows: [["Wireless", "Wi-Fi 6 (802.11ax)"], ["Bluetooth", "5.3"], ["NFC", "Pairing and web help"]],
+    box: [[-78, 24, 55], [-32, 64, 90]], view: [0, 0.3, 1] },
+  { id: "battery", name: "Battery", where: "Underside", key: "6600 mAh · 47.5 Wh",
+    rows: [["Type", "PowerPrecision+ Li-ion"], ["Removable", "Yes"], ["Charging", "Built-in charger"]],
+    box: [[-50, -6, -55], [50, 14, 55]], view: [0.15, -1, 0.25] },
+  { id: "core", name: "Electronics", where: "Inside", key: "400 MHz ARM",
+    rows: [["Memory", "256 MB RAM, 512 MB flash"], ["User storage", "128 MB"], ["OS", "Link-OS"]],
+    box: [[-60, 14, -45], [60, 40, 45]], view: [0.6, 0.6, 0.8] }
+];
+
+const CONCEPTS = [
+  { id: "interface", n: "01", name: "Interface", title: "A clearer path through the printer." },
+  { id: "controls", n: "02", name: "Controls", title: "Make each press easier to target." },
+  { id: "display", n: "03", name: "Display", title: "Let the screen meet the user." },
+  { id: "port", n: "04", name: "Port cover", title: "Make the cover easier to operate." },
+  { id: "specs", n: "", name: "Specs", title: "" }
+];
+
+// One printer, one set of settings. Both interfaces read and write these.
+const SETTINGS = [
+  { id: "paper", label: "Paper type", type: "choice", options: ["Labels", "Receipt", "Linerless"], value: 0 },
+  { id: "darkness", label: "Darkness", type: "number", min: 0, max: 30, step: 0.5, value: 7.0, unit: "" },
+  { id: "length", label: "Label length", type: "number", min: 1, max: 12, step: 0.5, value: 6.0, unit: " in" },
+  { id: "calibrate", label: "Calibration", type: "action" },
+  { id: "speed", label: "Print speed", type: "number", min: 2, max: 4.5, step: 0.5, value: 4.0, unit: " ips" },
+  { id: "wifi", label: "Wi-Fi", type: "info", text: "Connected" },
+  { id: "bt", label: "Bluetooth", type: "choice", options: ["On", "Off"], value: 0 },
+  { id: "battery", label: "Battery", type: "info", text: "82%" },
+  { id: "language", label: "Language", type: "choice", options: ["English", "Español", "Français", "Deutsch"], value: 0 }
+];
+
+const MM = 0.001;
+const TARGET = new THREE.Vector3(0, 0.042, 0);
+const HOME = new THREE.Vector3(0.24, 0.2, 0.26);
+
+const app = document.getElementById("app");
+const stage = document.getElementById("stage");
+const partsEl = document.getElementById("parts");
+const loadingEl = document.getElementById("loading");
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+// =====================================================================
+// Helpers
+// =====================================================================
+function clamp(v, lo, hi) {
+  return Math.max(lo, Math.min(hi, v));
+}
+function lerp(a, b, t) {
+  return a + (b - a) * t;
+}
+function ease(t) {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+function smooth(t) {
+  const c = clamp(t, 0, 1);
+  return c * c * (3 - 2 * c);
+}
+function approach(current, target, rate, dt) {
+  return current + (target - current) * (1 - Math.exp(-rate * dt));
+}
+function fmtSetting(s) {
+  if (s.type === "number") {
+    return s.value.toFixed(1) + s.unit;
+  }
+  if (s.type === "choice") {
+    return s.options[s.value];
+  }
+  if (s.type === "info") {
+    return s.text;
+  }
+  return "";
+}
+function setting(id) {
+  return SETTINGS.find(function (s) {
+    return s.id === id;
+  });
+}
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+// Build a local frame (right, up, normal) on a fitted surface plane.
+function planeFrame(normal, rightHint) {
+  const n = normal.clone().normalize();
+  const r = rightHint.clone();
+  r.addScaledVector(n, -r.dot(n)).normalize();
+  const u = new THREE.Vector3().crossVectors(n, r).normalize();
+  return { n: n, r: r, u: u, basis: new THREE.Matrix4().makeBasis(r, u, n) };
+}
+
+// =====================================================================
+// Ledger: tabs and spec cards
+// =====================================================================
+const tabsEl = document.getElementById("tabs");
+for (const c of CONCEPTS) {
+  const t = document.createElement("button");
+  t.type = "button";
+  t.className = "tab";
+  t.setAttribute("role", "tab");
+  t.dataset.id = c.id;
+  t.textContent = c.n ? c.n + " " + c.name : c.name;
+  t.addEventListener("click", function () {
+    selectConcept(c.id, true);
+  });
+  tabsEl.appendChild(t);
+  c.tab = t;
+}
+
+for (const p of PARTS) {
+  const card = document.createElement("article");
+  card.className = "part";
+  card.tabIndex = 0;
+  card.dataset.id = p.id;
+  let rowsHtml = "";
+  for (const r of p.rows) {
+    rowsHtml += "<dt>" + r[0] + "</dt><dd>" + r[1] + "</dd>";
+  }
+  card.innerHTML =
+    '<div class="part-top"><h3>' + p.name + '</h3><span class="where">' + p.where + "</span></div>" +
+    '<div class="key">' + p.key + "</div>" +
+    '<dl class="rows">' + rowsHtml + "</dl>";
+  partsEl.appendChild(card);
+  p.card = card;
+}
+
+// On-page keypad mirrors (both route into the same press handler)
+const PAD_LAYOUT = [
+  ["softL", "Back", "soft", 1, 1], ["up", "▲", "", 3, 1], ["softR", "Home", "soft", 5, 1],
+  ["left", "◀", "", 2, 2], ["ok", "OK", "", 3, 2], ["right", "▶", "", 4, 2],
+  ["down", "▼", "", 3, 3]
+];
+const padButtons = {};
+function buildPad(el) {
+  for (const k of PAD_LAYOUT) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = k[1];
+    b.dataset.key = k[0];
+    if (k[2]) {
+      b.className = k[2];
+    }
+    b.style.gridColumn = String(k[3]);
+    b.style.gridRow = String(k[4]);
+    b.addEventListener("click", function () {
+      pressKey(k[0]);
+    });
+    el.appendChild(b);
+    if (!padButtons[k[0]]) {
+      padButtons[k[0]] = [];
+    }
+    padButtons[k[0]].push(b);
+  }
+}
+buildPad(document.getElementById("pad-interface"));
+buildPad(document.getElementById("pad-controls"));
+
+// =====================================================================
+// three.js scene
+// =====================================================================
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: false });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 0.9;
+stage.prepend(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(35, 1, 0.005, 10);
+camera.position.copy(HOME);
+
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.target.copy(TARGET);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 0.05;
+controls.maxDistance = 0.8;
+controls.autoRotate = !reduceMotion;
+controls.autoRotateSpeed = 0.8;
+
+const hemi = new THREE.HemisphereLight(0xf4f7fa, 0x2a3038, 0.55);
+scene.add(hemi);
+const keyLight = new THREE.DirectionalLight(0xffffff, 0.75);
+keyLight.position.set(0.4, 0.8, 0.5);
+scene.add(keyLight);
+const rimLight = new THREE.DirectionalLight(0xdfe8ff, 0.3);
+rimLight.position.set(-0.6, 0.3, -0.5);
+scene.add(rimLight);
+
+// Highlight uniforms shared by the scan materials (specs tab hover)
+const hl = {
+  uMin: { value: new THREE.Vector3(9, 9, 9) },
+  uMax: { value: new THREE.Vector3(9, 9, 9) },
+  uOn: { value: 0 },
+  uTime: { value: 0 },
+  uColor: { value: new THREE.Color(0xe0a08a) }
+};
+
+function patchMaterial(mat) {
+  mat.onBeforeCompile = function (shader) {
+    shader.uniforms.uMin = hl.uMin;
+    shader.uniforms.uMax = hl.uMax;
+    shader.uniforms.uOn = hl.uOn;
+    shader.uniforms.uTime = hl.uTime;
+    shader.uniforms.uColor = hl.uColor;
+    shader.vertexShader = shader.vertexShader
+      .replace("#include <common>", "#include <common>\nvarying vec3 vWorldPos;")
+      .replace("#include <worldpos_vertex>", "#include <worldpos_vertex>\nvWorldPos = (modelMatrix * vec4(transformed, 1.0)).xyz;");
+    shader.fragmentShader = shader.fragmentShader
+      .replace(
+        "#include <common>",
+        "#include <common>\nvarying vec3 vWorldPos;\nuniform vec3 uMin;\nuniform vec3 uMax;\nuniform float uOn;\nuniform float uTime;\nuniform vec3 uColor;\n" +
+        "float boxMask(vec3 p) {\n" +
+        "  vec3 d = max(uMin - p, p - uMax);\n" +
+        "  float outside = max(max(d.x, d.y), d.z);\n" +
+        "  return 1.0 - smoothstep(-0.0015, 0.0025, outside);\n" +
+        "}"
+      )
+      .replace(
+        "#include <map_fragment>",
+        "#include <map_fragment>\n" +
+        "float hlMask = boxMask(vWorldPos) * uOn;\n" +
+        "diffuseColor.rgb *= mix(1.0, 0.5, uOn * (1.0 - hlMask));\n" +
+        "diffuseColor.rgb = mix(diffuseColor.rgb, uColor, hlMask * 0.38);"
+      )
+      .replace(
+        "#include <emissivemap_fragment>",
+        "#include <emissivemap_fragment>\n" +
+        "totalEmissiveRadiance += uColor * hlMask * (0.16 + 0.08 * sin(uTime * 3.0));"
+      );
+  };
+  mat.needsUpdate = true;
+}
+
+// =====================================================================
+// Scan models (polished default, raw on demand)
+// =====================================================================
+const meshes = [];
+const savedMaps = new Map();
+const loader = new THREE.GLTFLoader();
+const texLoader = new THREE.TextureLoader();
+const MODELS = {
+  polished: { file: "polished-glb.txt", group: null, meshes: [] },
+  raw: { file: "zq630plus-glb.txt", group: null, meshes: [] }
+};
+let currentModel = "polished";
+const conceptMeshes = [];
+
+function refreshPickList() {
+  meshes.length = 0;
+  for (const m of MODELS[currentModel].meshes) {
+    meshes.push(m);
+  }
+  for (const m of conceptMeshes) {
+    meshes.push(m);
+  }
+}
+
+function prepareModel(modelKey, gltf) {
+  const clay = document.getElementById("btn-clay").getAttribute("aria-pressed") === "true";
+  gltf.scene.traverse(function (o) {
+    if (o.isMesh) {
+      o.material = o.material.clone();
+      const m = o.material;
+      m.color.setRGB(1, 1, 1);
+      m.metalness = 0;
+      m.roughness = 0.85;
+      m.side = THREE.DoubleSide;
+      const tex = texLoader.load("tex-" + o.name + ".jpg", function () {
+        m.needsUpdate = true;
+      });
+      tex.flipY = false;
+      tex.encoding = THREE.sRGBEncoding;
+      tex.anisotropy = 4;
+      m.map = tex;
+      if (clay) {
+        m.map = null;
+        m.color.setRGB(0.62, 0.64, 0.66);
+      }
+      patchMaterial(m);
+      savedMaps.set(m, tex);
+      MODELS[modelKey].meshes.push(o);
+    }
+  });
+  MODELS[modelKey].group = gltf.scene;
+  gltf.scene.visible = modelKey === currentModel;
+  scene.add(gltf.scene);
+}
+
+function loadModel(modelKey, done) {
+  fetch(MODELS[modelKey].file)
+    .then(function (res) {
+      return res.text();
+    })
+    .then(function (b64) {
+      // The scan ships as base64 text; decode it to the binary glTF and parse it.
+      const bin = atob(b64.trim());
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) {
+        bytes[i] = bin.charCodeAt(i);
+      }
+      loader.parse(bytes.buffer, "", function (gltf) {
+        prepareModel(modelKey, gltf);
+        done();
+      }, onModelError);
+    })
+    .catch(onModelError);
+}
+
+function onModelError() {
+  loadingEl.hidden = false;
+  loadingEl.textContent = "Couldn't load the model file.";
+}
+
+function showModel(modelKey) {
+  currentModel = modelKey;
+  for (const k of Object.keys(MODELS)) {
+    if (MODELS[k].group) {
+      MODELS[k].group.visible = k === modelKey;
+    }
+  }
+  refreshPickList();
+  snapAnchors();
+}
+
+// =====================================================================
+// Mode (current / planned) and its animated blend
+// =====================================================================
+let mode = "current";
+let morph = 0;
+let morphFrom = 0;
+let morphStart = -1;
+
+function setMode(next) {
+  if (next === mode) {
+    return;
+  }
+  mode = next;
+  morphFrom = morph;
+  morphStart = performance.now();
+  app.dataset.mode = next;
+  const sw = document.getElementById("modeswitch");
+  sw.dataset.mode = next;
+  document.getElementById("mode-current").setAttribute("aria-pressed", String(next === "current"));
+  document.getElementById("mode-planned").setAttribute("aria-pressed", String(next === "planned"));
+  ui.startCrossfade();
+  updateDisplayControls();
+  updateCaption();
+}
+document.getElementById("mode-current").addEventListener("click", function () {
+  setMode("current");
+});
+document.getElementById("mode-planned").addEventListener("click", function () {
+  setMode("planned");
+});
+
+function updateMorph(now) {
+  const target = mode === "planned" ? 1 : 0;
+  if (morphStart < 0) {
+    morph = target;
+    return;
+  }
+  const t = reduceMotion ? 1 : clamp((now - morphStart) / 650, 0, 1);
+  morph = lerp(morphFrom, target, ease(t));
+  if (t >= 1) {
+    morphStart = -1;
+  }
+}
+
+// =====================================================================
+// Screen interface: two complete UIs drawn to one canvas
+// =====================================================================
+const SW = 576;
+const SH = 480;
+const screenCanvas = document.createElement("canvas");
+screenCanvas.width = SW;
+screenCanvas.height = SH;
+const sctx = screenCanvas.getContext("2d");
+const bufA = document.createElement("canvas");
+bufA.width = SW;
+bufA.height = SH;
+const bufB = document.createElement("canvas");
+bufB.width = SW;
+bufB.height = SH;
+const screenTex = new THREE.CanvasTexture(screenCanvas);
+screenTex.encoding = THREE.sRGBEncoding;
+screenTex.anisotropy = 4;
+
+const FONT = "'Archivo', 'Helvetica Neue', Arial, sans-serif";
+const HOME_ITEMS = ["Settings", "Wireless", "Bluetooth", "Battery", "Sensors", "Language", "Print", "Power"];
+const HOME_ICONS = ["gear", "wifi", "bt", "battery", "eye", "globe", "printer", "power"];
+const SET_ICONS = ["paper", "contrast", "ruler", "target", "speed", "wifi", "bt", "battery", "globe"];
+
+const ui = {
+  cur: { screen: "home", sel: 0, sel2: 0, edit: 0, page: "" },
+  pl: { screen: "idle", sel: 0, top: 0, edit: 0 },
+  selAnim: { pl: 0 },
+  hlBox: { home: { init: false }, settings: { init: false } },
+  trans: null,
+  fade: null,
+  toast: null,
+  dirty: true,
+  startCrossfade: function () {
+    this.fade = { start: performance.now(), from: null };
+    const c = bufB.getContext("2d");
+    c.clearRect(0, 0, SW, SH);
+    c.drawImage(screenCanvas, 0, 0);
+    this.fade.snapshot = true;
+    this.dirty = true;
+  },
+  push: function (dir) {
+    const c = bufB.getContext("2d");
+    c.clearRect(0, 0, SW, SH);
+    c.drawImage(screenCanvas, 0, 0);
+    this.trans = { start: performance.now(), dir: dir };
+    this.dirty = true;
+  },
+  showToast: function (text) {
+    this.toast = { text: text, start: performance.now() };
+    this.dirty = true;
+  }
+};
+
+// ---------- icons for the current (stock-style) UI ----------
+function drawIcon(ctx, name, cx, cy, s, col) {
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.strokeStyle = col;
+  ctx.fillStyle = col;
+  ctx.lineWidth = s * 0.09;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  const h = s / 2;
+  if (name === "gear") {
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(a) * h * 0.55, Math.sin(a) * h * 0.55);
+      ctx.lineTo(Math.cos(a) * h * 0.85, Math.sin(a) * h * 0.85);
+      ctx.stroke();
+    }
+    ctx.beginPath();
+    ctx.arc(0, 0, h * 0.55, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(0, 0, h * 0.2, 0, Math.PI * 2);
+    ctx.stroke();
+  } else if (name === "wifi") {
+    for (let i = 1; i <= 3; i++) {
+      ctx.beginPath();
+      ctx.arc(0, h * 0.55, h * 0.3 * i, -Math.PI * 0.78, -Math.PI * 0.22);
+      ctx.stroke();
+    }
+    ctx.beginPath();
+    ctx.arc(0, h * 0.55, h * 0.08, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (name === "bt") {
+    ctx.beginPath();
+    ctx.moveTo(-h * 0.35, -h * 0.4);
+    ctx.lineTo(h * 0.35, h * 0.35);
+    ctx.lineTo(0, h * 0.75);
+    ctx.lineTo(0, -h * 0.75);
+    ctx.lineTo(h * 0.35, -h * 0.35);
+    ctx.lineTo(-h * 0.35, h * 0.4);
+    ctx.stroke();
+  } else if (name === "battery") {
+    ctx.strokeRect(-h * 0.7, -h * 0.38, h * 1.3, h * 0.76);
+    ctx.fillRect(h * 0.62, -h * 0.16, h * 0.14, h * 0.32);
+    ctx.fillRect(-h * 0.58, -h * 0.26, h * 0.85, h * 0.52);
+  } else if (name === "eye") {
+    ctx.beginPath();
+    ctx.ellipse(0, 0, h * 0.8, h * 0.45, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(0, 0, h * 0.2, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (name === "globe") {
+    ctx.beginPath();
+    ctx.arc(0, 0, h * 0.7, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.ellipse(0, 0, h * 0.3, h * 0.7, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(-h * 0.7, 0);
+    ctx.lineTo(h * 0.7, 0);
+    ctx.stroke();
+  } else if (name === "printer") {
+    ctx.strokeRect(-h * 0.75, -h * 0.15, h * 1.5, h * 0.6);
+    ctx.strokeRect(-h * 0.45, -h * 0.6, h * 0.9, h * 0.45);
+    ctx.strokeRect(-h * 0.45, h * 0.45, h * 0.9, h * 0.35);
+  } else if (name === "power") {
+    ctx.beginPath();
+    ctx.arc(0, h * 0.08, h * 0.6, -Math.PI * 0.32, Math.PI * 1.32);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(0, -h * 0.7);
+    ctx.lineTo(0, 0);
+    ctx.stroke();
+  } else if (name === "paper") {
+    ctx.strokeRect(-h * 0.45, -h * 0.7, h * 0.9, h * 1.4);
+    ctx.beginPath();
+    ctx.moveTo(-h * 0.25, -h * 0.3);
+    ctx.lineTo(h * 0.25, -h * 0.3);
+    ctx.moveTo(-h * 0.25, 0);
+    ctx.lineTo(h * 0.25, 0);
+    ctx.stroke();
+  } else if (name === "contrast") {
+    ctx.beginPath();
+    ctx.arc(0, 0, h * 0.65, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(0, 0, h * 0.65, -Math.PI / 2, Math.PI / 2);
+    ctx.fill();
+  } else if (name === "ruler") {
+    ctx.strokeRect(-h * 0.8, -h * 0.25, h * 1.6, h * 0.5);
+    for (let i = -3; i <= 3; i++) {
+      ctx.beginPath();
+      ctx.moveTo(i * h * 0.22, -h * 0.25);
+      ctx.lineTo(i * h * 0.22, i % 2 === 0 ? 0 : -h * 0.08);
+      ctx.stroke();
+    }
+  } else if (name === "target") {
+    ctx.beginPath();
+    ctx.arc(0, 0, h * 0.65, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(0, 0, h * 0.3, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(-h * 0.85, 0);
+    ctx.lineTo(h * 0.85, 0);
+    ctx.moveTo(0, -h * 0.85);
+    ctx.lineTo(0, h * 0.85);
+    ctx.stroke();
+  } else if (name === "speed") {
+    ctx.beginPath();
+    ctx.arc(0, h * 0.25, h * 0.65, Math.PI, 0);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(0, h * 0.25);
+    ctx.lineTo(h * 0.4, -h * 0.2);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// ---------- current (stock-style) UI ----------
+function drawCurrentUI(ctx, now) {
+  const st = ui.cur;
+  const g = ctx.createLinearGradient(0, 0, 0, SH);
+  g.addColorStop(0, "#173f93");
+  g.addColorStop(1, "#0c2763");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, SW, SH);
+  // top strip: small icons and the selected item's name only
+  ctx.fillStyle = "rgba(0, 0, 0, 0.25)";
+  ctx.fillRect(0, 0, SW, 58);
+  drawIcon(ctx, "bt", 30, 29, 30, "#8fb3ff");
+  drawIcon(ctx, "battery", SW - 36, 29, 38, "#7ee08f");
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "700 28px " + FONT;
+  let label = "";
+  if (st.screen === "home") {
+    label = HOME_ITEMS[st.sel].toUpperCase();
+  } else if (st.screen === "settings") {
+    label = SETTINGS[st.sel2].label.toUpperCase();
+  } else if (st.screen === "edit") {
+    label = SETTINGS[st.sel2].label.toUpperCase();
+  } else {
+    label = st.page.toUpperCase();
+  }
+  ctx.fillText(label, SW / 2, 30);
+
+  if (st.screen === "home" || st.screen === "settings") {
+    const isHome = st.screen === "home";
+    const cols = isHome ? 4 : 5;
+    const count = isHome ? HOME_ITEMS.length : SETTINGS.length;
+    const cellW = SW / cols - 8;
+    const cellH = isHome ? 150 : 128;
+    const x0 = (SW - cols * cellW) / 2;
+    const y0 = isHome ? 92 : 100;
+    const sel = isHome ? st.sel : st.sel2;
+    const box = ui.hlBox[isHome ? "home" : "settings"];
+    box.tx = x0 + (sel % cols) * cellW;
+    box.ty = y0 + Math.floor(sel / cols) * cellH;
+    if (!box.init) {
+      box.x = box.tx;
+      box.y = box.ty;
+      box.init = true;
+    }
+    box.x = approach(box.x, box.tx, 20, 1 / 60);
+    box.y = approach(box.y, box.ty, 20, 1 / 60);
+    ctx.strokeStyle = "#ffd23f";
+    ctx.lineWidth = 5;
+    roundRect(ctx, box.x + 6, box.y + 6, cellW - 12, cellH - 12, 10);
+    ctx.stroke();
+    for (let i = 0; i < count; i++) {
+      const c = i % cols;
+      const r = Math.floor(i / cols);
+      const icon = isHome ? HOME_ICONS[i] : SET_ICONS[i];
+      const active = i === sel;
+      drawIcon(ctx, icon, x0 + c * cellW + cellW / 2, y0 + r * cellH + cellH / 2, isHome ? 70 : 56, active ? "#ffd23f" : "#dbe6ff");
+    }
+    // bottom strip with model name
+    ctx.fillStyle = "rgba(0, 0, 0, 0.25)";
+    ctx.fillRect(0, SH - 54, SW, 54);
+    ctx.fillStyle = "#c9d6f5";
+    ctx.font = "600 22px " + FONT;
+    ctx.textAlign = "left";
+    ctx.fillText(isHome ? "HOME MENU" : "SETTINGS", 18, SH - 27);
+    ctx.textAlign = "right";
+    ctx.fillText("ZQ630R PLUS", SW - 18, SH - 27);
+  } else if (st.screen === "edit") {
+    const s = SETTINGS[st.sel2];
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "700 120px " + FONT;
+    ctx.textAlign = "center";
+    const val = s.type === "number" ? st.edit.toFixed(1) : s.options[st.edit];
+    ctx.font = (s.type === "number" ? "700 120px " : "700 70px ") + FONT;
+    ctx.fillText(val, SW / 2, 230);
+    ctx.fillStyle = "#ffd23f";
+    ctx.font = "700 48px " + FONT;
+    ctx.fillText("◀", 70, 230);
+    ctx.fillText("▶", SW - 70, 230);
+    ctx.fillStyle = "#c9d6f5";
+    ctx.font = "600 22px " + FONT;
+    ctx.fillText("OK", SW / 2, 380);
+  } else {
+    ctx.fillStyle = "#ffffff";
+    ctx.textAlign = "center";
+    ctx.font = "700 64px " + FONT;
+    let text = "—";
+    if (st.page === "Battery") {
+      text = "82%";
+    } else if (st.page === "Wireless" || st.page === "Wi-Fi") {
+      text = "Connected";
+    } else if (st.page === "Bluetooth") {
+      text = "On";
+    } else if (st.page === "Language") {
+      text = "English";
+    }
+    ctx.fillText(text, SW / 2, 230);
+  }
+}
+
+// ---------- planned UI ----------
+const PL = {
+  bg: "#13201f",
+  bar: "#1b2b2a",
+  text: "#eef3f1",
+  dim: "#9fb3ae",
+  green: "#3ccf7a",
+  accent: "#3c7a6c",
+  sel: "#2e6f61"
+};
+
+function drawStatusBar(ctx) {
+  ctx.fillStyle = PL.bar;
+  ctx.fillRect(0, 0, SW, 58);
+  ctx.textBaseline = "middle";
+  ctx.font = "700 24px " + FONT;
+  ctx.fillStyle = PL.text;
+  ctx.textAlign = "left";
+  drawIcon(ctx, "wifi", 32, 31, 34, PL.text);
+  drawIcon(ctx, "bt", 72, 29, 28, PL.text);
+  ctx.textAlign = "right";
+  ctx.fillText("82%", SW - 90, 30);
+  ctx.strokeStyle = PL.text;
+  ctx.lineWidth = 3;
+  roundRect(ctx, SW - 80, 17, 52, 26, 5);
+  ctx.stroke();
+  ctx.fillRect(SW - 28, 25, 5, 10);
+  ctx.fillStyle = PL.green;
+  ctx.fillRect(SW - 76, 21, 36, 18);
+}
+
+function drawSoftBar(ctx, left, right) {
+  ctx.fillStyle = PL.bar;
+  ctx.fillRect(0, SH - 62, SW, 62);
+  ctx.fillStyle = PL.text;
+  ctx.font = "700 26px " + FONT;
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "left";
+  ctx.fillText(left, 24, SH - 31);
+  ctx.textAlign = "right";
+  ctx.fillText(right, SW - 24, SH - 31);
+}
+
+function drawPlannedUI(ctx, now) {
+  const st = ui.pl;
+  ctx.fillStyle = PL.bg;
+  ctx.fillRect(0, 0, SW, SH);
+  drawStatusBar(ctx);
+  ctx.textBaseline = "middle";
+  if (st.screen === "idle") {
+    // ready banner
+    ctx.fillStyle = PL.green;
+    roundRect(ctx, 22, 76, SW - 44, 112, 14);
+    ctx.fill();
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.arc(82, 132, 34, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = PL.green;
+    ctx.lineWidth = 8;
+    ctx.beginPath();
+    ctx.moveTo(66, 133);
+    ctx.lineTo(78, 146);
+    ctx.lineTo(100, 118);
+    ctx.stroke();
+    ctx.fillStyle = "#06210f";
+    ctx.textAlign = "left";
+    ctx.font = "800 54px " + FONT;
+    ctx.fillText("READY", 136, 120);
+    ctx.font = "600 22px " + FONT;
+    ctx.fillText("Printer ready to print", 138, 160);
+    const rows = [
+      ["Battery", "82%", PL.green],
+      ["Media", setting("paper").options[setting("paper").value] + " · " + setting("length").value.toFixed(1) + " in", PL.text],
+      ["Wi-Fi", "Connected", PL.green],
+      ["IP address", "192.168.1.42", PL.text]
+    ];
+    ctx.font = "600 27px " + FONT;
+    for (let i = 0; i < rows.length; i++) {
+      const y = 228 + i * 46;
+      ctx.fillStyle = PL.dim;
+      ctx.textAlign = "left";
+      ctx.fillText(rows[i][0], 30, y);
+      ctx.fillStyle = rows[i][2];
+      ctx.textAlign = "right";
+      ctx.fillText(rows[i][1], SW - 30, y);
+    }
+    drawSoftBar(ctx, "Menu", "Feed");
+  } else if (st.screen === "list") {
+    ctx.fillStyle = PL.text;
+    ctx.textAlign = "left";
+    ctx.font = "800 32px " + FONT;
+    ctx.fillText("Settings", 24, 90);
+    const rowH = 60;
+    const visible = 5;
+    const listTop = 120;
+    if (st.sel < st.top) {
+      st.top = st.sel;
+    }
+    if (st.sel > st.top + visible - 1) {
+      st.top = st.sel - visible + 1;
+    }
+    ui.selAnim.pl = approach(ui.selAnim.pl, st.sel - st.top, 20, 1 / 60);
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, listTop, SW, rowH * visible);
+    ctx.clip();
+    ctx.fillStyle = PL.sel;
+    roundRect(ctx, 14, listTop + ui.selAnim.pl * rowH + 4, SW - 28, rowH - 8, 10);
+    ctx.fill();
+    for (let i = st.top; i < Math.min(SETTINGS.length, st.top + visible); i++) {
+      const y = listTop + (i - st.top) * rowH + rowH / 2;
+      ctx.fillStyle = PL.text;
+      ctx.textAlign = "left";
+      ctx.font = (i === st.sel ? "700 " : "500 ") + "28px " + FONT;
+      ctx.fillText(SETTINGS[i].label, 32, y);
+      ctx.textAlign = "right";
+      ctx.fillStyle = i === st.sel ? "#d8f3ea" : PL.dim;
+      ctx.font = "500 25px " + FONT;
+      ctx.fillText(fmtSetting(SETTINGS[i]), SW - 54, y);
+    }
+    ctx.restore();
+    // scroll cues only when there is more above or below
+    ctx.fillStyle = PL.dim;
+    ctx.font = "700 24px " + FONT;
+    ctx.textAlign = "right";
+    if (st.top > 0) {
+      ctx.fillText("▲", SW - 18, listTop + 14);
+    }
+    if (st.top + visible < SETTINGS.length) {
+      ctx.fillText("▼", SW - 18, listTop + rowH * visible - 14);
+    }
+    drawSoftBar(ctx, "Back", "Home");
+  } else if (st.screen === "edit") {
+    const s = SETTINGS[st.sel];
+    ctx.fillStyle = PL.dim;
+    ctx.textAlign = "left";
+    ctx.font = "600 24px " + FONT;
+    ctx.fillText("Settings ›", 24, 90);
+    ctx.fillStyle = PL.text;
+    ctx.font = "800 34px " + FONT;
+    ctx.fillText(s.label, 24, 130);
+    ctx.textAlign = "center";
+    if (s.type === "number") {
+      ctx.font = "800 110px " + FONT;
+      ctx.fillText(st.edit.toFixed(1), SW / 2, 230);
+      const frac = (st.edit - s.min) / (s.max - s.min);
+      ctx.fillStyle = "#2a3c3a";
+      roundRect(ctx, 40, 300, SW - 80, 16, 8);
+      ctx.fill();
+      ctx.fillStyle = PL.green;
+      roundRect(ctx, 40, 300, Math.max(16, (SW - 80) * frac), 16, 8);
+      ctx.fill();
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath();
+      ctx.arc(40 + (SW - 80) * frac, 308, 15, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = PL.dim;
+      ctx.font = "500 20px " + FONT;
+      ctx.textAlign = "left";
+      ctx.fillText(s.min.toFixed(1), 40, 346);
+      ctx.textAlign = "right";
+      ctx.fillText(s.max.toFixed(1), SW - 40, 346);
+    } else {
+      ctx.font = "800 72px " + FONT;
+      ctx.fillText(s.options[st.edit], SW / 2, 240);
+      ctx.fillStyle = PL.dim;
+      ctx.font = "600 22px " + FONT;
+      ctx.fillText((st.edit + 1) + " of " + s.options.length, SW / 2, 300);
+    }
+    ctx.fillStyle = PL.dim;
+    ctx.font = "600 22px " + FONT;
+    ctx.textAlign = "center";
+    ctx.fillText("◀ ▶ adjust · OK save", SW / 2, 384);
+    drawSoftBar(ctx, "Cancel", "Save");
+  }
+}
+
+function drawToast(ctx, now) {
+  if (!ui.toast) {
+    return false;
+  }
+  const t = (now - ui.toast.start) / 1400;
+  if (t >= 1) {
+    ui.toast = null;
+    return false;
+  }
+  const a = t < 0.15 ? t / 0.15 : t > 0.8 ? (1 - t) / 0.2 : 1;
+  ctx.save();
+  ctx.globalAlpha = a;
+  ctx.font = "700 28px " + FONT;
+  const w = ctx.measureText(ui.toast.text).width + 56;
+  ctx.fillStyle = mode === "planned" ? "#3ccf7a" : "#ffd23f";
+  roundRect(ctx, (SW - w) / 2, SH - 140, w, 56, 28);
+  ctx.fill();
+  ctx.fillStyle = "#0b1a14";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(ui.toast.text, SW / 2, SH - 112);
+  ctx.restore();
+  return true;
+}
+
+function renderUI(ctx, which, now) {
+  if (which === "planned") {
+    drawPlannedUI(ctx, now);
+  } else {
+    drawCurrentUI(ctx, now);
+  }
+}
+
+function updateScreen(now) {
+  const hb = ui.hlBox;
+  const boxMoving = function (b) {
+    return b.init && (Math.abs(b.x - b.tx) > 0.3 || Math.abs(b.y - b.ty) > 0.3);
+  };
+  const animating = ui.trans || ui.fade || ui.toast ||
+    Math.abs(ui.selAnim.pl - (ui.pl.sel - ui.pl.top)) > 0.002 ||
+    boxMoving(hb.home) || boxMoving(hb.settings);
+  if (!ui.dirty && !animating) {
+    return;
+  }
+  ui.dirty = false;
+  const a = bufA.getContext("2d");
+  renderUI(a, mode, now);
+  drawToast(a, now);
+  sctx.clearRect(0, 0, SW, SH);
+  if (ui.trans) {
+    const t = reduceMotion ? 1 : clamp((now - ui.trans.start) / 280, 0, 1);
+    const k = ease(t);
+    const off = ui.trans.dir * SW;
+    sctx.drawImage(bufB, -off * k, 0);
+    sctx.drawImage(bufA, off * (1 - k), 0);
+    if (t >= 1) {
+      ui.trans = null;
+    }
+  } else if (ui.fade) {
+    const t = reduceMotion ? 1 : clamp((now - ui.fade.start) / 420, 0, 1);
+    sctx.drawImage(bufB, 0, 0);
+    sctx.globalAlpha = smooth(t);
+    sctx.drawImage(bufA, 0, 0);
+    sctx.globalAlpha = 1;
+    if (t >= 1) {
+      ui.fade = null;
+    }
+  } else {
+    sctx.drawImage(bufA, 0, 0);
+  }
+  screenTex.needsUpdate = true;
+}
+
+// ---------- navigation logic ----------
+const task = {
+  current: { presses: 0, start: 0, done: null },
+  planned: { presses: 0, start: 0, done: null }
+};
+
+function taskPress() {
+  const t = task[mode];
+  if (t.done) {
+    return;
+  }
+  if (t.presses === 0) {
+    t.start = performance.now();
+  }
+  t.presses += 1;
+  renderTask();
+}
+
+function taskSaved(id, value) {
+  const t = task[mode];
+  if (id === "darkness" && Math.abs(value - 8.0) < 0.001 && !t.done && t.presses > 0) {
+    t.done = { presses: t.presses, secs: (performance.now() - t.start) / 1000 };
+    renderTask();
+  }
+}
+
+function renderTask() {
+  const map = [["current", "t-cur-p", "t-cur-t"], ["planned", "t-pl-p", "t-pl-t"]];
+  for (const m of map) {
+    const t = task[m[0]];
+    const p = document.getElementById(m[1]);
+    const s = document.getElementById(m[2]);
+    if (t.done) {
+      p.textContent = String(t.done.presses);
+      s.textContent = t.done.secs.toFixed(1) + " s";
+      p.className = "done";
+      s.className = "done";
+    } else {
+      p.textContent = t.presses ? String(t.presses) : "–";
+      s.textContent = t.presses ? "…" : "–";
+      p.className = "";
+      s.className = "";
+    }
+  }
+}
+
+function resetUI() {
+  ui.cur = { screen: "home", sel: 0, sel2: 0, edit: 0, page: "" };
+  ui.pl = { screen: "idle", sel: 0, top: 0, edit: 0 };
+  ui.selAnim = { pl: 0 };
+  ui.hlBox = { home: { init: false }, settings: { init: false } };
+  setting("darkness").value = 7.0;
+  task.current = { presses: 0, start: 0, done: null };
+  task.planned = { presses: 0, start: 0, done: null };
+  renderTask();
+  ui.dirty = true;
+}
+document.getElementById("task-reset").addEventListener("click", resetUI);
+
+function stepValue(s, value, dir) {
+  if (s.type === "number") {
+    return clamp(Math.round((value + dir * s.step) / s.step) * s.step, s.min, s.max);
+  }
+  const n = s.options.length;
+  return (value + dir + n) % n;
+}
+
+function navPlanned(k) {
+  const st = ui.pl;
+  if (st.screen === "idle") {
+    if (k === "ok" || k === "softL") {
+      ui.push(1);
+      st.screen = "list";
+      st.sel = 0;
+      st.top = 0;
+      ui.selAnim.pl = 0;
+    } else if (k === "softR") {
+      ui.showToast("Feeding label");
+    }
+  } else if (st.screen === "list") {
+    if (k === "up") {
+      st.sel = Math.max(0, st.sel - 1);
+    } else if (k === "down") {
+      st.sel = Math.min(SETTINGS.length - 1, st.sel + 1);
+    } else if (k === "softL" || k === "softR" || k === "left") {
+      ui.push(-1);
+      st.screen = "idle";
+    } else if (k === "ok" || k === "right") {
+      const s = SETTINGS[st.sel];
+      if (s.type === "number" || s.type === "choice") {
+        ui.push(1);
+        st.screen = "edit";
+        st.edit = s.value;
+      } else if (s.type === "action") {
+        ui.showToast("Calibrating…");
+      } else {
+        ui.showToast(s.label + ": " + s.text);
+      }
+    }
+  } else if (st.screen === "edit") {
+    const s = SETTINGS[st.sel];
+    if (k === "left" || k === "down") {
+      st.edit = stepValue(s, st.edit, -1);
+    } else if (k === "right" || k === "up") {
+      st.edit = stepValue(s, st.edit, 1);
+    } else if (k === "ok" || k === "softR") {
+      s.value = st.edit;
+      ui.push(-1);
+      st.screen = "list";
+      ui.showToast("Saved");
+      taskSaved(s.id, s.value);
+    } else if (k === "softL") {
+      ui.push(-1);
+      st.screen = "list";
+    }
+  }
+}
+
+function navCurrent(k) {
+  const st = ui.cur;
+  if (st.screen === "home") {
+    const cols = 4;
+    if (k === "left") {
+      st.sel = (st.sel + HOME_ITEMS.length - 1) % HOME_ITEMS.length;
+    } else if (k === "right") {
+      st.sel = (st.sel + 1) % HOME_ITEMS.length;
+    } else if (k === "up" || k === "down") {
+      st.sel = (st.sel + cols) % HOME_ITEMS.length;
+    } else if (k === "ok") {
+      ui.push(1);
+      if (HOME_ITEMS[st.sel] === "Settings") {
+        st.screen = "settings";
+        st.sel2 = 0;
+        ui.hlBox.settings.init = false;
+      } else {
+        st.screen = "page";
+        st.page = HOME_ITEMS[st.sel];
+        st.pageFrom = "home";
+      }
+    }
+  } else if (st.screen === "settings") {
+    const cols = 5;
+    const n = SETTINGS.length;
+    if (k === "left") {
+      st.sel2 = (st.sel2 + n - 1) % n;
+    } else if (k === "right") {
+      st.sel2 = (st.sel2 + 1) % n;
+    } else if (k === "up" || k === "down") {
+      st.sel2 = st.sel2 + cols < n ? st.sel2 + cols : st.sel2 % cols;
+    } else if (k === "ok") {
+      const s = SETTINGS[st.sel2];
+      if (s.type === "number" || s.type === "choice") {
+        ui.push(1);
+        st.screen = "edit";
+        st.edit = s.value;
+      } else if (s.type === "action") {
+        ui.showToast("Calibrating…");
+      } else {
+        ui.push(1);
+        st.screen = "page";
+        st.page = s.label;
+        st.pageFrom = "settings";
+      }
+    } else if (k === "softL") {
+      ui.push(-1);
+      st.screen = "home";
+    } else if (k === "softR") {
+      ui.push(-1);
+      st.screen = "home";
+    }
+  } else if (st.screen === "edit") {
+    const s = SETTINGS[st.sel2];
+    if (k === "left" || k === "down") {
+      st.edit = stepValue(s, st.edit, -1);
+    } else if (k === "right" || k === "up") {
+      st.edit = stepValue(s, st.edit, 1);
+    } else if (k === "ok") {
+      s.value = st.edit;
+      ui.push(-1);
+      st.screen = "settings";
+      ui.showToast("Saved");
+      taskSaved(s.id, s.value);
+    } else if (k === "softL") {
+      ui.push(-1);
+      st.screen = "settings";
+    } else if (k === "softR") {
+      ui.push(-1);
+      st.screen = "home";
+    }
+  } else if (st.screen === "page") {
+    if (k === "softL" || k === "ok") {
+      ui.push(-1);
+      st.screen = st.pageFrom || "home";
+    } else if (k === "softR") {
+      ui.push(-1);
+      st.screen = "home";
+    }
+  }
+}
+
+function pressKey(k) {
+  const keyObj = keypad.keys.find(function (x) {
+    return x.id === k;
+  });
+  if (keyObj) {
+    keyObj.pressAt = performance.now();
+    keyObj.vel = 0;
+    keyObj.glow = 1;
+  }
+  const list = padButtons[k] || [];
+  for (const b of list) {
+    b.classList.add("flash");
+    setTimeout(function () {
+      b.classList.remove("flash");
+    }, 110);
+  }
+  taskPress();
+  if (mode === "planned") {
+    navPlanned(k);
+  } else {
+    navCurrent(k);
+  }
+  ui.dirty = true;
+}
+
+// =====================================================================
+// Display module (bezel + glass), hinged so it can tilt
+// =====================================================================
+// Plane fitted to the scanned display area (mm): y = A*x + B*z + C.
+const DISPLAY = { a: -0.3044, b: -0.1314, c: 81.9942, cx: 41, cz: 1.0, bezelW: 48, bezelH: 38, screenW: 40, screenH: 33.3, lift: 0.8 };
+const display = { pivot: null, veil: null, mat: null, tilt: 0, center: null, n: null, frame: null };
+
+function buildDisplay() {
+  const f = planeFrame(new THREE.Vector3(-DISPLAY.a, 1, -DISPLAY.b), new THREE.Vector3(0, 0, -1));
+  const cy = DISPLAY.a * DISPLAY.cx + DISPLAY.b * DISPLAY.cz + DISPLAY.c;
+  const center = new THREE.Vector3(DISPLAY.cx, cy, DISPLAY.cz).multiplyScalar(MM);
+  const root = new THREE.Group();
+  root.quaternion.setFromRotationMatrix(f.basis);
+  root.position.copy(center).addScaledVector(f.n, DISPLAY.lift * MM);
+  scene.add(root);
+
+  // fixed tray under the module covers the opening when the screen tilts
+  const tray = new THREE.Mesh(
+    new THREE.BoxGeometry((DISPLAY.bezelW + 4) * MM, (DISPLAY.bezelH + 4) * MM, 5 * MM),
+    new THREE.MeshStandardMaterial({ color: 0x0a0d0f, roughness: 0.9 })
+  );
+  tray.position.z = -2.6 * MM;
+  root.add(tray);
+  conceptMeshes.push(tray);
+
+  // hinge sits on the bottom edge (keypad side); the module rotates up toward the user
+  const pivot = new THREE.Group();
+  pivot.position.set(0, -DISPLAY.bezelH * MM / 2, 0);
+  root.add(pivot);
+  const module = new THREE.Group();
+  module.position.set(0, DISPLAY.bezelH * MM / 2, 0);
+  pivot.add(module);
+
+  const bezelDepth = 3 * MM;
+  const bezel = new THREE.Mesh(
+    new THREE.BoxGeometry(DISPLAY.bezelW * MM, DISPLAY.bezelH * MM, bezelDepth),
+    new THREE.MeshStandardMaterial({ color: 0x050607, roughness: 0.6, metalness: 0.05 })
+  );
+  bezel.position.z = -bezelDepth / 2 + 0.2 * MM;
+  module.add(bezel);
+
+  display.mat = new THREE.MeshStandardMaterial({
+    map: screenTex,
+    emissive: 0xffffff,
+    emissiveMap: screenTex,
+    emissiveIntensity: 0.85,
+    roughness: 0.25,
+    metalness: 0
+  });
+  const glass = new THREE.Mesh(new THREE.PlaneGeometry(DISPLAY.screenW * MM, DISPLAY.screenH * MM), display.mat);
+  glass.position.z = 0.3 * MM;
+  module.add(glass);
+
+  display.veil = new THREE.Mesh(
+    new THREE.PlaneGeometry(DISPLAY.screenW * MM, DISPLAY.screenH * MM),
+    new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false })
+  );
+  display.veil.position.z = 0.45 * MM;
+  module.add(display.veil);
+
+  const hinge = new THREE.Mesh(
+    new THREE.CylinderGeometry(1.3 * MM, 1.3 * MM, DISPLAY.bezelW * 0.8 * MM, 20),
+    new THREE.MeshStandardMaterial({ color: 0x0e1113, roughness: 0.7, metalness: 0.1 })
+  );
+  hinge.rotation.z = Math.PI / 2;
+  hinge.position.z = -1 * MM;
+  pivot.add(hinge);
+
+  display.pivot = pivot;
+  display.center = center.clone().addScaledVector(f.n, DISPLAY.lift * MM);
+  display.n = f.n.clone();
+  display.frame = f;
+  conceptMeshes.push(bezel);
+  conceptMeshes.push(glass);
+
+  const displayPart = PARTS.find(function (q) {
+    return q.id === "display";
+  });
+  displayPart.center = display.center.clone();
+  displayPart.dir = f.n.clone();
+  const faceDir = new THREE.Vector3(f.n.x, f.n.y, 0).normalize();
+  displayPart.camPos = display.center.clone().addScaledVector(faceDir, 0.15);
+}
+
+// =====================================================================
+// Keypad: modeled keys that morph between current and planned layouts
+// =====================================================================
+// Plane fitted to the scanned keypad area (mm): y = A*x + B*z + C.
+const KEYPAD = { a: -0.6846, b: -0.0072, c: 104.2767, cx: 73, cz: 1.0, lift: 2.0, plateU: 30, plateR: 48 };
+// r = to the user's right (toward -z), u = toward the screen. Sizes in mm.
+const KEY_SPECS = [
+  { id: "up", glyph: "▲", cur: [0, 6.6, 6.6, 4.2, 1.0], pl: [0, 10.2, 8.4, 8.4, 1.6] },
+  { id: "down", glyph: "▼", cur: [0, -6.6, 6.6, 4.2, 1.0], pl: [0, -10.2, 8.4, 8.4, 1.6] },
+  { id: "left", glyph: "◀", cur: [-6.6, 0, 4.2, 6.6, 1.0], pl: [-10.2, 0, 8.4, 8.4, 1.6] },
+  { id: "right", glyph: "▶", cur: [6.6, 0, 4.2, 6.6, 1.0], pl: [10.2, 0, 8.4, 8.4, 1.6] },
+  { id: "ok", glyph: "OK", cur: [0, 0, 6.2, 6.2, 1.1], pl: [0, 0, 8.4, 8.4, 1.6] },
+  { id: "softL", glyph: "", cur: [-14.5, 9.5, 6.0, 3.4, 0.9], pl: [-18.0, 10.6, 8.0, 5.2, 1.4] },
+  { id: "softR", glyph: "", cur: [14.5, 9.5, 6.0, 3.4, 0.9], pl: [18.0, 10.6, 8.0, 5.2, 1.4] }
+];
+const keypad = { root: null, keys: [], center: null, n: null };
+
+function glyphTexture(text) {
+  const c = document.createElement("canvas");
+  c.width = 128;
+  c.height = 128;
+  const g = c.getContext("2d");
+  g.fillStyle = "#ffffff";
+  g.textAlign = "center";
+  g.textBaseline = "middle";
+  g.font = (text === "OK" ? "800 64px " : "700 70px ") + FONT;
+  g.fillText(text, 64, 70);
+  const t = new THREE.CanvasTexture(c);
+  t.encoding = THREE.sRGBEncoding;
+  return t;
+}
+
+function roundedKeyGeometry() {
+  const s = new THREE.Shape();
+  const r = 0.3;
+  s.moveTo(-0.5 + r, -0.5);
+  s.lineTo(0.5 - r, -0.5);
+  s.quadraticCurveTo(0.5, -0.5, 0.5, -0.5 + r);
+  s.lineTo(0.5, 0.5 - r);
+  s.quadraticCurveTo(0.5, 0.5, 0.5 - r, 0.5);
+  s.lineTo(-0.5 + r, 0.5);
+  s.quadraticCurveTo(-0.5, 0.5, -0.5, 0.5 - r);
+  s.lineTo(-0.5, -0.5 + r);
+  s.quadraticCurveTo(-0.5, -0.5, -0.5 + r, -0.5);
+  const g = new THREE.ExtrudeGeometry(s, { depth: 1, bevelEnabled: true, bevelThickness: 0.12, bevelSize: 0.06, bevelSegments: 3, curveSegments: 10 });
+  return g;
+}
+
+const KEY_CUR_COLOR = new THREE.Color(0x181b1e);
+const KEY_PL_COLOR = new THREE.Color(0x262c30);
+const GLYPH_CUR_COLOR = new THREE.Color(0xaeb7bd);
+const GLYPH_PL_COLOR = new THREE.Color(0xeef3f0);
+const KEY_GLOW = new THREE.Color(0x3c7a6c);
+
+function buildKeypad() {
+  const f = planeFrame(new THREE.Vector3(-KEYPAD.a, 1, -KEYPAD.b), new THREE.Vector3(0, 0, -1));
+  const cy = KEYPAD.a * KEYPAD.cx + KEYPAD.b * KEYPAD.cz + KEYPAD.c;
+  const center = new THREE.Vector3(KEYPAD.cx, cy, KEYPAD.cz).multiplyScalar(MM);
+  const root = new THREE.Group();
+  root.quaternion.setFromRotationMatrix(f.basis);
+  root.position.copy(center).addScaledVector(f.n, KEYPAD.lift * MM);
+  scene.add(root);
+
+  // the plate covers the scanned keys so the modeled ones read cleanly
+  const plateShape = new THREE.Shape();
+  const pw = KEYPAD.plateR * MM;
+  const ph = KEYPAD.plateU * MM;
+  const pr = 6 * MM;
+  plateShape.moveTo(-pw / 2 + pr, -ph / 2);
+  plateShape.lineTo(pw / 2 - pr, -ph / 2);
+  plateShape.quadraticCurveTo(pw / 2, -ph / 2, pw / 2, -ph / 2 + pr);
+  plateShape.lineTo(pw / 2, ph / 2 - pr);
+  plateShape.quadraticCurveTo(pw / 2, ph / 2, pw / 2 - pr, ph / 2);
+  plateShape.lineTo(-pw / 2 + pr, ph / 2);
+  plateShape.quadraticCurveTo(-pw / 2, ph / 2, -pw / 2, ph / 2 - pr);
+  plateShape.lineTo(-pw / 2, -ph / 2 + pr);
+  plateShape.quadraticCurveTo(-pw / 2, -ph / 2, -pw / 2 + pr, -ph / 2);
+  const plate = new THREE.Mesh(
+    new THREE.ExtrudeGeometry(plateShape, { depth: 6 * MM, bevelEnabled: false, curveSegments: 12 }),
+    new THREE.MeshStandardMaterial({ color: 0x050607, roughness: 0.95, metalness: 0 })
+  );
+  plate.position.z = -6 * MM;
+  root.add(plate);
+  conceptMeshes.push(plate);
+
+  const geo = roundedKeyGeometry();
+  for (const spec of KEY_SPECS) {
+    const group = new THREE.Group();
+    const mat = new THREE.MeshStandardMaterial({ color: KEY_CUR_COLOR.clone(), roughness: 0.55, metalness: 0.02, emissive: 0x000000 });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.userData.keyId = spec.id;
+    group.add(mesh);
+    let glyph = null;
+    if (spec.glyph) {
+      glyph = new THREE.Mesh(
+        new THREE.PlaneGeometry(1, 1),
+        new THREE.MeshBasicMaterial({ map: glyphTexture(spec.glyph), transparent: true, color: GLYPH_CUR_COLOR.clone(), depthWrite: false })
+      );
+      glyph.userData.keyId = spec.id;
+      group.add(glyph);
+    } else {
+      glyph = new THREE.Mesh(
+        new THREE.PlaneGeometry(1, 0.12),
+        new THREE.MeshBasicMaterial({ color: GLYPH_CUR_COLOR.clone(), transparent: true, opacity: 0.8, depthWrite: false })
+      );
+      group.add(glyph);
+    }
+    root.add(group);
+    keypad.keys.push({ id: spec.id, spec: spec, group: group, mesh: mesh, mat: mat, glyph: glyph, depth: 0, vel: 0, glow: 0, pressAt: -1, hover: 0 });
+  }
+  keypad.root = root;
+  keypad.center = root.position.clone();
+  keypad.n = f.n.clone();
+}
+
+const keyMeshes = [];
+function updateKeypad(now, dt) {
+  for (const k of keypad.keys) {
+    const c = k.spec.cur;
+    const p = k.spec.pl;
+    const r = lerp(c[0], p[0], morph);
+    const u = lerp(c[1], p[1], morph);
+    const w = lerp(c[2], p[2], morph);
+    const h = lerp(c[3], p[3], morph);
+    const hgt = lerp(c[4], p[4], morph);
+    // spring: pushed down on press, rebounds with a little overshoot
+    const pressed = k.pressAt > 0 && now - k.pressAt < 90;
+    const target = pressed ? -1.0 : 0;
+    const stiffness = 900;
+    const damping = 26;
+    // fixed small substeps keep the spring stable even when frames are slow
+    const steps = Math.ceil(dt / 0.004);
+    const stepDt = dt / steps;
+    for (let i = 0; i < steps; i++) {
+      const accel = stiffness * (target - k.depth) - damping * k.vel;
+      k.vel += accel * stepDt;
+      k.depth += k.vel * stepDt;
+    }
+    if (!Number.isFinite(k.depth)) {
+      k.depth = 0;
+      k.vel = 0;
+    }
+    k.glow = Math.max(0, k.glow - dt * 3.2);
+    k.hover = approach(k.hover, hoverKey === k.id ? 1 : 0, 14, dt);
+    k.group.position.set(r * MM, u * MM, (k.depth + k.hover * 0.25) * MM);
+    k.mesh.scale.set(w * MM, h * MM, hgt * MM);
+    k.mesh.position.z = 0;
+    const glyphSize = lerp(3.4, 5.0, morph);
+    if (k.spec.glyph) {
+      k.glyph.scale.set(glyphSize * MM, glyphSize * MM, 1);
+    } else {
+      k.glyph.scale.set(w * 0.55 * MM, h * 0.55 * MM * 2.5, 1);
+    }
+    k.glyph.position.z = (hgt * 1.12 + 0.12) * MM;
+    k.mat.color.copy(KEY_CUR_COLOR).lerp(KEY_PL_COLOR, morph);
+    k.mat.emissive.copy(KEY_GLOW).multiplyScalar(k.glow * 0.9 + k.hover * 0.12);
+    k.glyph.material.color.copy(GLYPH_CUR_COLOR).lerp(GLYPH_PL_COLOR, morph);
+  }
+}
+
+// =====================================================================
+// Port cover: rubber flap (current) vs sliding cover (planned)
+// =====================================================================
+// Left side plane (mm): z = A*x + B*y + C, outward normal points to -z.
+const PORT = { a: 0.3, b: -0.0016, c: -81.22, cx: 60, cy: 27, lift: 4.2 };
+const port = { root: null, slider: null, flapPivot: null, open: false, anim: 0, center: null, n: null };
+
+function buildPort() {
+  const outward = new THREE.Vector3(PORT.a, -PORT.b, -1).normalize();
+  const f = planeFrame(outward, new THREE.Vector3(-1, 0, 0));
+  const cz = PORT.a * PORT.cx + PORT.b * PORT.cy + PORT.c;
+  const center = new THREE.Vector3(PORT.cx, PORT.cy, cz).multiplyScalar(MM);
+  const root = new THREE.Group();
+  root.quaternion.setFromRotationMatrix(f.basis);
+  root.position.copy(center).addScaledVector(f.n, PORT.lift * MM);
+  scene.add(root);
+
+  const dark = new THREE.MeshStandardMaterial({ color: 0x1b2023, roughness: 0.7 });
+  const track = new THREE.Mesh(new THREE.BoxGeometry(36 * MM, 14 * MM, 5 * MM), dark);
+  track.position.z = -2.5 * MM;
+  root.add(track);
+  conceptMeshes.push(track);
+
+  // the port itself
+  const well = new THREE.Mesh(new THREE.BoxGeometry(10 * MM, 4.2 * MM, 0.4 * MM), new THREE.MeshStandardMaterial({ color: 0x050607, roughness: 0.9 }));
+  well.position.set(-8 * MM, 0, 0.1 * MM);
+  root.add(well);
+  const tongue = new THREE.Mesh(new THREE.BoxGeometry(6.6 * MM, 1.0 * MM, 0.5 * MM), new THREE.MeshStandardMaterial({ color: 0xb9c0c4, roughness: 0.3, metalness: 0.8 }));
+  tongue.position.set(-8 * MM, 0, 0.3 * MM);
+  root.add(tongue);
+
+  // planned: yellow slider with grip ridges
+  const slider = new THREE.Group();
+  const yellow = new THREE.MeshStandardMaterial({ color: 0xf2c230, roughness: 0.45 });
+  const body = new THREE.Mesh(new THREE.BoxGeometry(17 * MM, 11.5 * MM, 2.2 * MM), yellow);
+  body.position.z = 1.1 * MM;
+  slider.add(body);
+  for (let i = -1; i <= 1; i++) {
+    const ridge = new THREE.Mesh(new THREE.BoxGeometry(0.9 * MM, 8 * MM, 0.8 * MM), new THREE.MeshStandardMaterial({ color: 0xd9a91f, roughness: 0.5 }));
+    ridge.position.set((3 + i * 2.2) * MM, 0, 2.5 * MM);
+    slider.add(ridge);
+  }
+  root.add(slider);
+  conceptMeshes.push(body);
+
+  // current: rubber flap hinged on its left edge
+  const flapPivot = new THREE.Group();
+  flapPivot.position.set(-16.5 * MM, 0, 0.6 * MM);
+  const flap = new THREE.Mesh(new THREE.BoxGeometry(17 * MM, 11.5 * MM, 1.4 * MM), new THREE.MeshStandardMaterial({ color: 0x23272b, roughness: 0.85 }));
+  flap.position.set(8.5 * MM, 0, 0.7 * MM);
+  flapPivot.add(flap);
+  const nub = new THREE.Mesh(new THREE.BoxGeometry(2 * MM, 4 * MM, 1 * MM), new THREE.MeshStandardMaterial({ color: 0x2c3135, roughness: 0.8 }));
+  nub.position.set(16.2 * MM, 0, 1.4 * MM);
+  flapPivot.add(nub);
+  root.add(flapPivot);
+  conceptMeshes.push(flap);
+
+  port.root = root;
+  port.slider = slider;
+  port.flapPivot = flapPivot;
+  port.center = root.position.clone();
+  port.n = f.n.clone();
+}
+
+function updatePort(dt) {
+  port.anim = approach(port.anim, port.open ? 1 : 0, 7, dt);
+  const o = port.anim;
+  // slider travels off the port; flap swings outward
+  port.slider.position.x = lerp(-8, 9, o) * MM;
+  port.flapPivot.rotation.y = -o * 1.35;
+  const sPl = smooth((morph - 0.45) / 0.55);
+  const sCur = smooth((0.55 - morph) / 0.55);
+  port.slider.scale.setScalar(Math.max(0.001, sPl));
+  port.slider.visible = sPl > 0.01;
+  port.flapPivot.scale.setScalar(Math.max(0.001, sCur));
+  port.flapPivot.visible = sCur > 0.01;
+}
+
+const coverBtn = document.getElementById("btn-cover");
+function toggleCover() {
+  port.open = !port.open;
+  coverBtn.textContent = port.open ? "Close cover" : "Open cover";
+}
+coverBtn.addEventListener("click", toggleCover);
+
+// =====================================================================
+// Display concept controls: ambient light, tilt, adaptive brightness
+// =====================================================================
+const slSun = document.getElementById("sl-sun");
+const slTilt = document.getElementById("sl-tilt");
+const cbAuto = document.getElementById("cb-auto");
+let sun = 0;
+let tiltTarget = 0;
+
+function updateDisplayControls() {
+  const planned = mode === "planned";
+  slTilt.disabled = !planned;
+  cbAuto.disabled = !planned;
+  document.getElementById("tilt-sub").textContent = planned ? "Hinged at the keypad edge." : "Fixed in the current design.";
+  tiltTarget = planned ? Number(slTilt.value) : 0;
+  document.getElementById("v-tilt").textContent = (planned ? slTilt.value : "0") + "°";
+}
+slSun.addEventListener("input", function () {
+  const v = Number(slSun.value);
+  document.getElementById("v-sun").textContent = v < 15 ? "Indoor" : v < 45 ? "Bright room" : v < 75 ? "Overcast outdoors" : "Direct sun";
+});
+slTilt.addEventListener("input", updateDisplayControls);
+cbAuto.addEventListener("change", updateDisplayControls);
+
+function updateDisplay(dt) {
+  sun = approach(sun, Number(slSun.value) / 100, 6, dt);
+  display.tilt = approach(display.tilt, tiltTarget, 6, dt);
+  display.pivot.rotation.x = THREE.MathUtils.degToRad(display.tilt);
+  const planned = morph > 0.5;
+  const adaptive = planned && cbAuto.checked;
+  const tiltRelief = planned ? 1 - 0.45 * (display.tilt / 35) : 1;
+  const glare = sun * 0.82 * tiltRelief * (adaptive ? 0.32 : 1);
+  display.veil.material.opacity = glare;
+  display.mat.emissiveIntensity = 0.85 + (adaptive ? sun * 1.3 : 0);
+  keyLight.intensity = 0.75 + sun * 1.6;
+  hemi.intensity = 0.55 + sun * 0.7;
+  const legible = clamp(1 - glare * 1.05, 0.04, 1);
+  document.getElementById("legibility").style.width = (legible * 100).toFixed(0) + "%";
+}
+
+// =====================================================================
+// Specs tab: pins, callout, hover highlight
+// =====================================================================
+for (const p of PARTS) {
+  const min = new THREE.Vector3(p.box[0][0], p.box[0][1], p.box[0][2]).multiplyScalar(MM);
+  const max = new THREE.Vector3(p.box[1][0], p.box[1][1], p.box[1][2]).multiplyScalar(MM);
+  p.min = min;
+  p.max = max;
+  p.center = min.clone().add(max).multiplyScalar(0.5);
+  p.volume = (max.x - min.x) * (max.y - min.y) * (max.z - min.z);
+  const dir = new THREE.Vector3(p.view[0], p.view[1], p.view[2]).normalize();
+  p.anchor = p.center.clone().addScaledVector(dir, 0.01);
+  p.camPos = p.center.clone().addScaledVector(dir, 0.26);
+  p.dir = dir;
+  const pin = document.createElement("div");
+  pin.className = "pin";
+  stage.appendChild(pin);
+  p.pin = pin;
+  p.pinVisible = true;
+}
+const callout = document.createElement("div");
+callout.className = "callout";
+callout.hidden = true;
+callout.innerHTML = '<div class="c-name"></div><div class="c-val"></div>';
+stage.appendChild(callout);
+
+function partAt(point) {
+  let best = null;
+  for (const p of PARTS) {
+    const inside =
+      point.x >= p.min.x && point.x <= p.max.x &&
+      point.y >= p.min.y && point.y <= p.max.y &&
+      point.z >= p.min.z && point.z <= p.max.z;
+    if (inside && (!best || p.volume < best.volume)) {
+      best = p;
+    }
+  }
+  return best;
+}
+
+function snapAnchors() {
+  const caster = new THREE.Raycaster();
+  for (const p of PARTS) {
+    const origin = p.center.clone().addScaledVector(p.dir, 0.3);
+    caster.set(origin, p.dir.clone().negate());
+    const hits = caster.intersectObjects(meshes, false);
+    for (const h of hits) {
+      if (partAt(h.point) === p || h.distance > 0.3) {
+        p.anchor = h.point.clone().addScaledVector(p.dir, 0.002);
+        break;
+      }
+    }
+  }
+}
+
+let active = null;
+function setActive(p, fromCard) {
+  if (p === active) {
+    return;
+  }
+  if (active) {
+    active.card.classList.remove("is-active");
+    active.pin.classList.remove("is-active");
+  }
+  active = p;
+  if (p) {
+    hl.uMin.value.copy(p.min);
+    hl.uMax.value.copy(p.max);
+    hl.uOn.value = 1;
+    partsEl.classList.add("has-active");
+    p.card.classList.add("is-active");
+    p.pin.classList.add("is-active");
+    callout.querySelector(".c-name").textContent = p.name;
+    callout.querySelector(".c-val").textContent = p.key;
+    callout.hidden = false;
+    if (!fromCard && window.matchMedia("(min-width: 861px)").matches) {
+      p.card.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+  } else {
+    hl.uOn.value = 0;
+    partsEl.classList.remove("has-active");
+    callout.hidden = true;
+  }
+}
+
+for (const p of PARTS) {
+  p.card.addEventListener("mouseenter", function () {
+    setActive(p, true);
+  });
+  p.card.addEventListener("mouseleave", function () {
+    setActive(null, true);
+  });
+  p.card.addEventListener("focus", function () {
+    setActive(p, true);
+  });
+  p.card.addEventListener("click", function () {
+    setActive(p, true);
+    flyTo(p.camPos, p.center);
+  });
+}
+
+// =====================================================================
+// Concepts: tabs, camera moves, caption
+// =====================================================================
+let concept = "interface";
+
+function conceptCamera(id) {
+  if (id === "interface") {
+    const mid = display.center.clone().lerp(keypad.center, 0.35);
+    const dir = new THREE.Vector3(display.n.x + 0.25, display.n.y, 0).normalize();
+    return { target: mid, pos: mid.clone().addScaledVector(dir, 0.2) };
+  }
+  if (id === "controls") {
+    const dir = new THREE.Vector3(keypad.n.x, keypad.n.y, 0.18).normalize();
+    return { target: keypad.center.clone(), pos: keypad.center.clone().addScaledVector(dir, 0.13) };
+  }
+  if (id === "display") {
+    const t = display.center.clone();
+    return { target: t, pos: t.clone().add(new THREE.Vector3(0.13, 0.07, 0.15)) };
+  }
+  if (id === "port") {
+    const t = port.center.clone();
+    return { target: t, pos: t.clone().addScaledVector(port.n, 0.15).add(new THREE.Vector3(0.03, 0.05, 0)) };
+  }
+  return { target: TARGET.clone(), pos: HOME.clone() };
+}
+
+function selectConcept(id, fly) {
+  concept = id;
+  for (const c of CONCEPTS) {
+    const on = c.id === id;
+    c.tab.setAttribute("aria-selected", String(on));
+    document.getElementById("view-" + c.id).hidden = !on;
+  }
+  stage.classList.toggle("specs", id === "specs");
+  if (id !== "specs") {
+    setActive(null, true);
+  }
+  if (fly && display.center) {
+    const cam = conceptCamera(id);
+    flyTo(cam.pos, cam.target);
+  }
+  updateCaption();
+}
+
+function updateCaption() {
+  const c = CONCEPTS.find(function (x) {
+    return x.id === concept;
+  });
+  const label = mode === "planned" ? "Planned" : "Current";
+  document.getElementById("cap-eyebrow").textContent = c && c.n ? c.n + " / " + c.name + " · " + label : label;
+  document.getElementById("cap-title").textContent = c && c.title ? c.title : "ZQ630 Plus";
+}
+
+// =====================================================================
+// Pointer: keys get pressed, specs parts get hovered
+// =====================================================================
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+let pointerDirty = false;
+let lastPointer = null;
+let hoverKey = null;
+
+function castFrom(e) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+  pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+  raycaster.setFromCamera(pointer, camera);
+}
+
+function keyUnderPointer() {
+  const targets = keypad.keys.map(function (k) {
+    return k.mesh;
+  });
+  const hits = raycaster.intersectObjects(targets, false);
+  return hits.length ? hits[0].object.userData.keyId : null;
+}
+
+renderer.domElement.addEventListener("pointermove", function (e) {
+  lastPointer = e;
+  pointerDirty = true;
+});
+renderer.domElement.addEventListener("pointerleave", function () {
+  hoverKey = null;
+  stage.classList.remove("over-key");
+  if (concept === "specs") {
+    setActive(null, false);
+  }
+});
+let downAt = null;
+renderer.domElement.addEventListener("pointerdown", function (e) {
+  stopSpin();
+  downAt = { x: e.clientX, y: e.clientY };
+  if (keypad.keys.length) {
+    castFrom(e);
+    const k = keyUnderPointer();
+    if (k) {
+      controls.enabled = false;
+      downAt.key = k;
+      pressKey(k);
+    }
+  }
+});
+window.addEventListener("pointerup", function (e) {
+  controls.enabled = true;
+  if (!downAt) {
+    return;
+  }
+  const moved = Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y);
+  const wasKey = downAt.key;
+  downAt = null;
+  if (wasKey || moved > 5 || e.target !== renderer.domElement) {
+    return;
+  }
+  castFrom(e);
+  const hits = raycaster.intersectObjects(meshes, false);
+  const p = hits.length ? partAt(hits[0].point) : null;
+  if (p) {
+    flyTo(p.camPos, p.center);
+  }
+});
+
+function pointerFrame() {
+  if (!pointerDirty || !lastPointer || meshes.length === 0) {
+    return;
+  }
+  pointerDirty = false;
+  castFrom(lastPointer);
+  hoverKey = keyUnderPointer();
+  stage.classList.toggle("over-key", Boolean(hoverKey));
+  if (concept === "specs" && !hoverKey) {
+    const hits = raycaster.intersectObjects(meshes, false);
+    setActive(hits.length ? partAt(hits[0].point) : null, false);
+  }
+}
+
+// =====================================================================
+// Camera flights and toolbar
+// =====================================================================
+let flight = null;
+function flyTo(pos, target) {
+  stopSpin();
+  flight = {
+    start: performance.now(),
+    fromPos: camera.position.clone(),
+    toPos: pos.clone(),
+    fromTarget: controls.target.clone(),
+    toTarget: target.clone()
+  };
+}
+
+const spinBtn = document.getElementById("btn-spin");
+function stopSpin() {
+  controls.autoRotate = false;
+  spinBtn.setAttribute("aria-pressed", "false");
+}
+spinBtn.addEventListener("click", function () {
+  controls.autoRotate = !controls.autoRotate;
+  spinBtn.setAttribute("aria-pressed", String(controls.autoRotate));
+});
+document.getElementById("btn-reset").addEventListener("click", function () {
+  setActive(null, true);
+  flyTo(HOME, TARGET);
+});
+const clayBtn = document.getElementById("btn-clay");
+clayBtn.addEventListener("click", function () {
+  const clay = clayBtn.getAttribute("aria-pressed") !== "true";
+  clayBtn.setAttribute("aria-pressed", String(clay));
+  for (const [mat, map] of savedMaps) {
+    if (clay) {
+      mat.map = null;
+      mat.color.setRGB(0.62, 0.64, 0.66);
+    } else {
+      mat.map = map;
+      mat.color.setRGB(1, 1, 1);
+    }
+    mat.needsUpdate = true;
+  }
+});
+const rawBtn = document.getElementById("btn-raw");
+rawBtn.addEventListener("click", function () {
+  const wantRaw = rawBtn.getAttribute("aria-pressed") !== "true";
+  rawBtn.setAttribute("aria-pressed", String(wantRaw));
+  const k = wantRaw ? "raw" : "polished";
+  if (MODELS[k].group) {
+    showModel(k);
+    return;
+  }
+  loadingEl.textContent = "Loading raw scan…";
+  loadingEl.hidden = false;
+  loadModel(k, function () {
+    loadingEl.hidden = true;
+    showModel(k);
+  });
+});
+
+// presentation mode
+function setPresenting(on) {
+  app.classList.toggle("presenting", on);
+  if (!on) {
+    app.classList.remove("clean");
+  }
+  setTimeout(resize, 0);
+}
+document.getElementById("btn-present").addEventListener("click", function () {
+  setPresenting(true);
+});
+document.getElementById("present-exit").addEventListener("click", function () {
+  setPresenting(false);
+});
+
+// mouse clicks on page buttons drop focus so Enter and the arrows drive the printer
+document.addEventListener("click", function (e) {
+  const b = e.target.closest ? e.target.closest("button") : null;
+  if (b && e.detail > 0) {
+    b.blur();
+  }
+});
+
+// keyboard
+window.addEventListener("keydown", function (e) {
+  const tag = e.target && e.target.tagName;
+  if (tag === "INPUT" || tag === "TEXTAREA" || e.metaKey || e.ctrlKey || e.altKey) {
+    return;
+  }
+  const map = { ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right", Enter: "ok", q: "softL", Q: "softL", e: "softR", E: "softR" };
+  if (map[e.key]) {
+    if (tag === "BUTTON" && e.key === "Enter") {
+      return;
+    }
+    e.preventDefault();
+    pressKey(map[e.key]);
+    return;
+  }
+  const k = e.key.toLowerCase();
+  if (k === "c") {
+    setMode("current");
+  } else if (k === "p") {
+    setMode("planned");
+  } else if (k === "m") {
+    setMode(mode === "planned" ? "current" : "planned");
+  } else if (k === "o") {
+    toggleCover();
+  } else if (k === "s") {
+    // sunlight: indoor <-> direct sun
+    slSun.value = Number(slSun.value) > 40 ? "0" : "85";
+    slSun.dispatchEvent(new Event("input"));
+  } else if (k === "t") {
+    // tilt: flat <-> 30 degrees (planned design only)
+    slTilt.value = Number(slTilt.value) > 10 ? "0" : "30";
+    updateDisplayControls();
+  } else if (k === "f") {
+    setPresenting(!app.classList.contains("presenting"));
+  } else if (k === "h" && app.classList.contains("presenting")) {
+    app.classList.toggle("clean");
+  } else if (k === "b" && app.classList.contains("presenting")) {
+    app.classList.toggle("bg-light");
+  } else if (k === "escape") {
+    setPresenting(false);
+  } else if (k >= "1" && k <= "5") {
+    selectConcept(CONCEPTS[Number(k) - 1].id, true);
+  }
+});
+
+// =====================================================================
+// Pin overlay + loop
+// =====================================================================
+let lastOcclusion = 0;
+const tmp = new THREE.Vector3();
+function updateOcclusion(now) {
+  if (concept !== "specs" || meshes.length === 0 || now - lastOcclusion < 180) {
+    return;
+  }
+  lastOcclusion = now;
+  for (const p of PARTS) {
+    const dir = tmp.copy(p.anchor).sub(camera.position);
+    const dist = dir.length();
+    raycaster.set(camera.position, dir.normalize());
+    raycaster.far = dist - 0.004;
+    p.pinVisible = raycaster.intersectObjects(meshes, false).length === 0;
+  }
+  raycaster.far = Infinity;
+}
+
+function placeOverlays() {
+  if (concept !== "specs") {
+    return;
+  }
+  const w = stage.clientWidth;
+  const h = stage.clientHeight;
+  for (const p of PARTS) {
+    tmp.copy(p.anchor).project(camera);
+    const x = (tmp.x * 0.5 + 0.5) * w;
+    const y = (-tmp.y * 0.5 + 0.5) * h;
+    p.pin.style.left = x + "px";
+    p.pin.style.top = y + "px";
+    p.pin.classList.toggle("is-hidden", !p.pinVisible && p !== active);
+    if (p === active) {
+      const close = camera.position.distanceTo(p.center) < 0.2;
+      callout.hidden = close;
+      p.pin.classList.toggle("is-hidden", close);
+      const flip = x > w - 220;
+      callout.style.left = x + "px";
+      callout.style.top = y + "px";
+      callout.style.transform = flip ? "translate(calc(-100% - 14px), -50%)" : "translate(14px, -50%)";
+    }
+  }
+}
+
+function resize() {
+  const w = stage.clientWidth;
+  const h = stage.clientHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener("resize", resize);
+
+const panelButton = document.getElementById("btn-panel");
+
+function setPanel(show) {
+  app.classList.toggle("no-panel", !show);
+  panelButton.setAttribute("aria-pressed", show ? "true" : "false");
+  resize();
+}
+
+panelButton.addEventListener("click", function () {
+  setPanel(app.classList.contains("no-panel"));
+});
+
+// Inside the Studio the model gets the whole frame; the Details button brings the panel back.
+const pageParams = new URLSearchParams(window.location.search);
+if (pageParams.get("embed") === "1") {
+  app.classList.add("no-panel");
+  panelButton.setAttribute("aria-pressed", "false");
+}
+resize();
+
+let ready = false;
+let lastFrame = performance.now();
+function frame(now) {
+  const dt = Math.min(0.05, (now - lastFrame) / 1000);
+  lastFrame = now;
+  hl.uTime.value = now / 1000;
+  if (flight) {
+    const t = reduceMotion ? 1 : Math.min(1, (now - flight.start) / 900);
+    const k = ease(t);
+    camera.position.lerpVectors(flight.fromPos, flight.toPos, k);
+    controls.target.lerpVectors(flight.fromTarget, flight.toTarget, k);
+    if (t >= 1) {
+      flight = null;
+    }
+  }
+  controls.update();
+  if (ready) {
+    updateMorph(now);
+    pointerFrame();
+    updateKeypad(now, dt);
+    updatePort(dt);
+    updateDisplay(dt);
+    updateScreen(now);
+    updateOcclusion(now);
+    placeOverlays();
+  }
+  renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+// =====================================================================
+// Boot
+// =====================================================================
+selectConcept("interface", false);
+renderTask();
+updateDisplayControls();
+loadModel("polished", function () {
+  buildDisplay();
+  buildKeypad();
+  buildPort();
+  refreshPickList();
+  snapAnchors();
+  ready = true;
+  ui.dirty = true;
+  loadingEl.hidden = true;
+});
+if (document.fonts && document.fonts.ready) {
+  document.fonts.ready.then(function () {
+    ui.dirty = true;
+  });
+}
+</script>
+
+</body>
+</html>

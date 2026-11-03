@@ -1,0 +1,129 @@
+# Builds teammates' proposals with Claude.
+# The Studio API opens an issue labeled "proposal" (new idea) or comments "/refine ..." on it (follow-up).
+# Each proposal lives on branch proposal-<issue number> with one pull request; Cloudflare Pages
+# gives that branch its own preview link.
+name: Studio build
+
+on:
+  issues:
+    types: [labeled]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  id-token: write
+
+concurrency:
+  group: proposal-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: >-
+      (github.event_name == 'issues' && github.event.label.name == 'proposal') ||
+      (github.event_name == 'issue_comment' &&
+       !github.event.issue.pull_request &&
+       contains(github.event.issue.labels.*.name, 'proposal') &&
+       startsWith(github.event.comment.body, '/refine'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      NUMBER: ${{ github.event.issue.number }}
+      BRANCH: proposal-${{ github.event.issue.number }}
+      TITLE: ${{ github.event.issue.title }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Switch to the proposal branch
+        run: |
+          git config user.name "studio-bot"
+          git config user.email "studio-bot@users.noreply.github.com"
+          if git ls-remote --exit-code --heads origin "$BRANCH" > /dev/null; then
+            git checkout -B "$BRANCH" "origin/$BRANCH"
+            # Bring in anything merged to main since, so the proposal can still be merged cleanly.
+            git merge --no-edit origin/main || git merge --abort
+          else
+            git checkout -B "$BRANCH"
+          fi
+
+      - name: Mark as building
+        run: |
+          gh label create building --color FBCA04 --force > /dev/null
+          gh label create ready --color 0E8A16 --force > /dev/null
+          gh label create failed --color B60205 --force > /dev/null
+          gh issue edit "$NUMBER" --add-label building
+          gh issue edit "$NUMBER" --remove-label ready || true
+          gh issue edit "$NUMBER" --remove-label failed || true
+
+      - name: Collect the request
+        run: |
+          mkdir -p .studio
+          gh issue view "$NUMBER" --json title,body,comments > .studio/issue.json
+          node scripts/request.mjs .studio/issue.json > .studio/request.md
+          cat .studio/request.md
+
+      - name: Build with Claude
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ github.token }}
+          prompt: |
+            You are building one design proposal for the ZQ630 Plus 3D viewer. Read CLAUDE.md first and follow its rules.
+            The request is in .studio/request.md. It may include follow-ups; the latest one wins when they conflict.
+            Make the change, mostly in site/viewer/index.html. Then run `node scripts/check.mjs` and fix anything it reports.
+            Finish by writing .studio/summary.md: two to four plain sentences for non-programmers, as CLAUDE.md describes.
+          claude_args: >-
+            --max-turns 40
+            --allowedTools "Read,Edit,MultiEdit,Write,Glob,Grep,Bash(node scripts/check.mjs)"
+
+      - name: Check the result
+        run: node scripts/check.mjs
+
+      - name: Save the change
+        run: |
+          git add -A site proposals
+          if git diff --cached --quiet; then
+            echo "Claude made no file changes." > .studio/nochange
+            exit 1
+          fi
+          git commit -m "Proposal #$NUMBER: $TITLE"
+          git push origin "$BRANCH"
+
+      - name: Open the pull request
+        run: |
+          if ! gh pr view "$BRANCH" --json number > /dev/null 2>&1; then
+            printf 'Closes #%s\n\nBuilt by the Studio from the request in #%s.\n' "$NUMBER" "$NUMBER" > .studio/pr.md
+            gh pr create --head "$BRANCH" --base main --title "Proposal #$NUMBER: $TITLE" --body-file .studio/pr.md
+          fi
+
+      - name: Report back
+        run: |
+          if [ -s .studio/summary.md ]; then
+            SUMMARY="$(cat .studio/summary.md)"
+          else
+            SUMMARY="A new version is ready to preview."
+          fi
+          printf '<!-- studio:summary -->\n%s\n' "$SUMMARY" > .studio/comment.md
+          gh issue comment "$NUMBER" --body-file .studio/comment.md
+          gh issue edit "$NUMBER" --add-label ready
+          gh issue edit "$NUMBER" --remove-label building || true
+
+      - name: Report a failed build
+        if: failure()
+        run: |
+          if [ -f .studio/nochange ]; then
+            REASON="Claude finished without changing anything. Try describing the change more specifically."
+          else
+            REASON="The build did not finish. Try rewording the request, or ask Danish to take a look."
+          fi
+          printf '<!-- studio:failed -->\n%s\n' "$REASON" > .studio/failed.md
+          gh issue comment "$NUMBER" --body-file .studio/failed.md || true
+          gh issue edit "$NUMBER" --add-label failed || true
+          gh issue edit "$NUMBER" --remove-label building || true
