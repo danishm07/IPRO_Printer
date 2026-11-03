@@ -369,9 +369,9 @@ input:focus, textarea:focus { outline: 2px solid var(--focus); outline-offset: 1
         <label for="version">Showing</label><select id="version"><option value="0">Live version</option></select>
         <small id="now-note">What everyone has agreed on so far. Pick a proposal here to see its version.</small>
       </div>
-      <button class="btn" id="back-live" hidden>Back to live version</button>
+      <button class="btn" id="back-live" hidden>Back to live</button>
       <button class="btn" id="reload">Reload</button>
-      <button class="btn" id="open-tab">Open in new tab</button>
+      <button class="btn" id="open-tab">New tab</button>
     </div>
     <div class="ready-banner" id="ready-banner" hidden><span id="ready-text"></span><button class="btn clay" id="ready-go" type="button">Preview it</button><button class="link" id="ready-hide" type="button">Later</button></div>
     <iframe class="frame" id="frame" title="3D viewer" src="/viewer/?embed=1" allow="fullscreen"></iframe>
@@ -706,17 +706,17 @@ input:focus, textarea:focus { outline: 2px solid var(--focus); outline-offset: 1
   $("back-live").addEventListener("click", function () {
     showViewer(null);
   });
+  // Reload with a fresh query string so the browser fetches the newest deploy instead of a cached copy.
   $("reload").addEventListener("click", function () {
-    const frame = $("frame");
-    const src = frame.src;
-    frame.src = "about:blank";
-    setTimeout(function () {
-      frame.src = src;
-    }, 50);
+    const proposal = state.proposals.find(function (p) {
+      return p.number === state.showing;
+    });
+    const url = viewerUrl(proposal || null);
+    $("frame").src = url + "&t=" + Date.now();
   });
   $("open-tab").addEventListener("click", function () {
     // The full page, with its details panel.
-    const url = $("frame").src.replace("?embed=1", "");
+    const url = $("frame").src.replace(/\?embed=1(&t=\d+)?/, "");
     window.open(url, "_blank", "noopener");
   });
 
