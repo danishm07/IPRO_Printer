@@ -1,8 +1,9 @@
-// POST /api/run  { number, action: "cancel" | "rerun" }
+// POST /api/run  { number, name, action: "cancel" | "rerun" | "remove" }
 // cancel: stops the proposal's build that is running or waiting.
 // rerun: builds the same request again (after a failed or cancelled build).
+// remove: closes the proposal without merging and deletes its branch (its author or the owner).
 // Needs the GitHub token to have Actions: read and write.
-import { json, fail, gh, repoParts, isBusy, labelNames } from "../../lib/studio.js";
+import { json, fail, gh, repoParts, isBusy, labelNames, isAdmin, readMarker, cleanName } from "../../lib/studio.js";
 
 async function runsFor(env, number) {
   const repo = repoParts(env);
@@ -49,6 +50,30 @@ export async function onRequestPost(context) {
       } catch (err) {
         // it may not have had the label
       }
+    }
+    return json({ ok: true });
+  }
+
+  if (action === "remove") {
+    const meta = readMarker(issue.body, "meta");
+    const author = String(meta.name || "").toLowerCase();
+    const caller = cleanName(input.name).toLowerCase();
+    if (!isAdmin(context.request, env) && (!caller || caller !== author)) {
+      return fail("Only the person who suggested this, or the owner, can remove it", 403);
+    }
+    if (isBusy(labels)) {
+      return fail("Cancel the build first, then remove it");
+    }
+    const branch = "proposal-" + number;
+    const pulls = await gh(env, "GET", base + "/pulls?state=open&head=" + repo.owner + ":" + branch);
+    for (const pull of pulls) {
+      await gh(env, "PATCH", base + "/pulls/" + pull.number, { state: "closed" });
+    }
+    await gh(env, "PATCH", base + "/issues/" + number, { state: "closed", state_reason: "not_planned" });
+    try {
+      await gh(env, "DELETE", base + "/git/refs/heads/" + branch);
+    } catch (err) {
+      // the branch may never have been created
     }
     return json({ ok: true });
   }

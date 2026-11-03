@@ -466,6 +466,36 @@ h1 {
 .foot { margin-top: 20px; font-size: 11.5px; color: var(--muted); }
 .foot a { color: var(--muted); }
 
+/* ---------- keyboard shortcuts card ---------- */
+.keys-card {
+  position: absolute;
+  left: 24px;
+  bottom: 76px;
+  z-index: 5;
+  width: min(330px, calc(100% - 48px));
+  max-height: calc(100% - 140px);
+  overflow-y: auto;
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  padding: 14px 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+  font-size: 12.5px;
+}
+.keys-card h3 { margin: 0 0 8px; font-size: 13px; font-weight: 700; }
+.keys-card dl { display: grid; grid-template-columns: 96px 1fr; gap: 5px 12px; margin: 0 0 10px; }
+.keys-card dt { white-space: nowrap; }
+.keys-card dd { margin: 0; color: var(--muted); }
+.keys-card kbd {
+  font: 500 11px var(--font-mono);
+  border: 1px solid var(--rule);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  padding: 1px 5px;
+  background: var(--paper);
+}
+.keys-card .k-note { color: var(--muted); font-size: 11.5px; margin: 0; }
+
 /* ---------- details panel hidden (Details button, or ?embed=1 inside the Studio) ---------- */
 .app.no-panel { grid-template-columns: minmax(0, 1fr); }
 .app.no-panel .ledger { display: none; }
@@ -474,6 +504,7 @@ h1 {
 .app.presenting { grid-template-columns: minmax(0, 1fr); }
 .app.presenting .ledger,
 .app.presenting .toolbar,
+.app.presenting .keys-card,
 .app.presenting .hint { display: none; }
 .app.presenting .stage { background-color: var(--present-bg); background-image: none; }
 .app.presenting.bg-light .stage { background-color: #f3f2ef; }
@@ -515,6 +546,7 @@ h1 {
       <button class="tool" id="btn-raw" type="button" aria-pressed="false">Raw scan</button>
       <button class="tool" id="btn-present" type="button">Present</button>
       <button class="tool" id="btn-panel" type="button" aria-pressed="true">Details</button>
+      <button class="tool" id="btn-keys" type="button" aria-pressed="false">Keys</button>
     </div>
     <div class="hint">Drag to orbit · scroll to zoom · click the screen or keys</div>
     <div class="caption" id="caption">
@@ -522,6 +554,33 @@ h1 {
       <div class="c-title" id="cap-title"></div>
     </div>
     <button class="present-exit" id="present-exit" type="button">Esc · exit</button>
+    <div class="keys-card" id="keys-card" role="dialog" aria-label="Keyboard shortcuts" hidden>
+      <h3>Printer screen</h3>
+      <dl>
+        <dt><kbd>&larr;</kbd> <kbd>&uarr;</kbd> <kbd>&rarr;</kbd> <kbd>&darr;</kbd></dt><dd>Arrow keys on the keypad</dd>
+        <dt><kbd>Enter</kbd></dt><dd>OK key</dd>
+        <dt><kbd>Q</kbd> <kbd>E</kbd></dt><dd>Left and right soft keys</dd>
+      </dl>
+      <h3>Design</h3>
+      <dl>
+        <dt><kbd>C</kbd> <kbd>P</kbd></dt><dd>Current or Planned design</dd>
+        <dt><kbd>M</kbd></dt><dd>Switch between them</dd>
+        <dt><kbd>O</kbd></dt><dd>Open or close the port cover</dd>
+        <dt><kbd>S</kbd></dt><dd>Indoor light or direct sunlight</dd>
+        <dt><kbd>T</kbd></dt><dd>Tilt the screen (Planned)</dd>
+      </dl>
+      <h3>View</h3>
+      <dl>
+        <dt><kbd>1</kbd>&ndash;<kbd>5</kbd></dt><dd>Interface, Controls, Display, Port cover, Specs</dd>
+        <dt><kbd>D</kbd></dt><dd>Show or hide the details panel</dd>
+        <dt><kbd>F</kbd></dt><dd>Present mode</dd>
+        <dt><kbd>H</kbd></dt><dd>Hide labels while presenting</dd>
+        <dt><kbd>B</kbd></dt><dd>Light background while presenting</dd>
+        <dt><kbd>Esc</kbd></dt><dd>Leave present mode or close this card</dd>
+        <dt><kbd>?</kbd></dt><dd>Show or hide this card</dd>
+      </dl>
+      <p class="k-note">Click the model once first so the keys go to it.</p>
+    </div>
   </section>
 
   <aside class="ledger">
@@ -2486,7 +2545,11 @@ window.addEventListener("keydown", function (e) {
     return;
   }
   const k = e.key.toLowerCase();
-  if (k === "c") {
+  if (k === "?") {
+    toggleKeys();
+  } else if (k === "d") {
+    setPanel(app.classList.contains("no-panel"));
+  } else if (k === "c") {
     setMode("current");
   } else if (k === "p") {
     setMode("planned");
@@ -2509,7 +2572,11 @@ window.addEventListener("keydown", function (e) {
   } else if (k === "b" && app.classList.contains("presenting")) {
     app.classList.toggle("bg-light");
   } else if (k === "escape") {
-    setPresenting(false);
+    if (!keysCard.hidden) {
+      toggleKeys();
+    } else {
+      setPresenting(false);
+    }
   } else if (k >= "1" && k <= "5") {
     selectConcept(CONCEPTS[Number(k) - 1].id, true);
   }
@@ -2580,6 +2647,16 @@ function setPanel(show) {
 panelButton.addEventListener("click", function () {
   setPanel(app.classList.contains("no-panel"));
 });
+
+const keysCard = document.getElementById("keys-card");
+const keysButton = document.getElementById("btn-keys");
+
+function toggleKeys() {
+  keysCard.hidden = !keysCard.hidden;
+  keysButton.setAttribute("aria-pressed", keysCard.hidden ? "false" : "true");
+}
+
+keysButton.addEventListener("click", toggleKeys);
 
 // Inside the Studio the model gets the whole frame; the Details button brings the panel back.
 const pageParams = new URLSearchParams(window.location.search);

@@ -967,6 +967,15 @@ input:focus, textarea:focus { outline: 2px solid var(--focus); outline-offset: 1
       });
       actions.append(again);
     }
+    if (isOpen && !busy && canControl) {
+      const remove = el("button", "btn danger", "Remove");
+      remove.type = "button";
+      remove.title = "Close this proposal without merging it";
+      remove.addEventListener("click", function () {
+        runAction(p, "remove", remove);
+      });
+      actions.append(remove);
+    }
     if (isOpen && !busy) {
       const change = el("button", "btn" + (state.openRefine[p.number] ? " on" : ""), "Change it");
       change.type = "button";
@@ -1047,9 +1056,15 @@ input:focus, textarea:focus { outline: 2px solid var(--focus); outline-offset: 1
     if (action === "cancel" && !window.confirm("Stop the build for #" + p.number + "?")) {
       return;
     }
+    if (action === "remove" && !window.confirm("Remove #" + p.number + "? It moves to Merged and closed and its preview stops working.")) {
+      return;
+    }
     button.disabled = true;
     try {
-      await api("POST", "run", { number: p.number, action: action });
+      await api("POST", "run", { number: p.number, name: state.name, action: action });
+      if (action === "remove" && state.showing === p.number) {
+        showViewer(null);
+      }
       await load(true);
     } catch (err) {
       button.disabled = false;
