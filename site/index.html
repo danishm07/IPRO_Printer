@@ -624,7 +624,8 @@ input:focus, textarea:focus { outline: 2px solid var(--focus); outline-offset: 1
   }
 
   function previewable(p) {
-    return Boolean(p.preview) && p.status !== "merged" && p.status !== "closed" && p.status !== "failed";
+    // A failed or cancelled follow-up still leaves the last good version on the branch.
+    return Boolean(p.preview) && p.status !== "merged" && p.status !== "closed";
   }
 
   function isMine(p) {
@@ -725,6 +726,7 @@ input:focus, textarea:focus { outline: 2px solid var(--focus); outline-offset: 1
     building: "Building",
     ready: "Ready to preview",
     failed: "Needs another try",
+    cancelled: "Cancelled",
     merged: "Merged",
     closed: "Closed"
   };
@@ -898,6 +900,9 @@ input:focus, textarea:focus { outline: 2px solid var(--focus); outline-offset: 1
       fb.append(el("span", "lbl", "Build did not work"), p.failure || "Try describing it differently with Change it.");
       box.append(fb);
     }
+    if (p.status === "cancelled") {
+      box.append(el("div", "note", "This build was cancelled. Run it again, or change the request first."));
+    }
 
     const actions = el("div", "row");
     if (p.preview && p.status !== "merged" && p.status !== "closed") {
@@ -910,7 +915,25 @@ input:focus, textarea:focus { outline: 2px solid var(--focus); outline-offset: 1
       actions.append(preview);
     }
     const isOpen = p.status !== "merged" && p.status !== "closed";
-    if (isOpen && p.status !== "building" && p.status !== "queued") {
+    const busy = p.status === "building" || p.status === "queued";
+    const canControl = isMine(p) || state.isAdmin;
+    if (isOpen && busy && canControl) {
+      const cancel = el("button", "btn danger", "Cancel build");
+      cancel.type = "button";
+      cancel.addEventListener("click", function () {
+        runAction(p, "cancel", cancel);
+      });
+      actions.append(cancel);
+    }
+    if (isOpen && (p.status === "failed" || p.status === "cancelled") && canControl) {
+      const again = el("button", "btn", "Run again");
+      again.type = "button";
+      again.addEventListener("click", function () {
+        runAction(p, "rerun", again);
+      });
+      actions.append(again);
+    }
+    if (isOpen && !busy) {
       const change = el("button", "btn" + (state.openRefine[p.number] ? " on" : ""), "Change it");
       change.type = "button";
       change.addEventListener("click", function () {
@@ -982,6 +1005,20 @@ input:focus, textarea:focus { outline: 2px solid var(--focus); outline-offset: 1
       await api("POST", "vote", { number: p.number, name: state.name, vote: vote });
       await load(true);
     } catch (err) {
+      window.alert(err.message);
+    }
+  }
+
+  async function runAction(p, action, button) {
+    if (action === "cancel" && !window.confirm("Stop the build for #" + p.number + "?")) {
+      return;
+    }
+    button.disabled = true;
+    try {
+      await api("POST", "run", { number: p.number, action: action });
+      await load(true);
+    } catch (err) {
+      button.disabled = false;
       window.alert(err.message);
     }
   }

@@ -1,7 +1,7 @@
 // POST /api/propose  { name, title, text, image }
 // Opens an issue for the idea, stores the image on the proposal branch, then adds the
 // "proposal" label, which starts the build workflow.
-import { json, fail, gh, repoParts, cleanName, cleanText, imageBase64, saveImage, writeMarker } from "../../lib/studio.js";
+import { json, fail, gh, repoParts, cleanName, cleanText, imageBase64, saveImage, writeMarker, busyProposalFor } from "../../lib/studio.js";
 
 async function ensureLabel(env, name, color) {
   const repo = repoParts(env);
@@ -36,6 +36,11 @@ export async function onRequestPost(context) {
     if (!image) {
       return fail("That image could not be read. Try a JPG or PNG under 3 MB.");
     }
+  }
+
+  const busy = await busyProposalFor(env, name);
+  if (busy) {
+    return fail("Your proposal #" + busy + " is still building. Wait for it to finish or cancel it first.", 409);
   }
 
   const repo = repoParts(env);

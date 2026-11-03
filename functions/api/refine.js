@@ -1,6 +1,6 @@
 // POST /api/refine  { number, name, text, image }
 // Adds a "/refine" follow-up comment; the workflow rebuilds the same branch with it.
-import { json, fail, gh, repoParts, cleanName, cleanText, imageBase64, saveImage, writeMarker } from "../../lib/studio.js";
+import { json, fail, gh, repoParts, cleanName, cleanText, imageBase64, saveImage, writeMarker, isBusy, labelNames, busyProposalFor } from "../../lib/studio.js";
 
 export async function onRequestPost(context) {
   const env = context.env;
@@ -23,6 +23,13 @@ export async function onRequestPost(context) {
   const issue = await gh(env, "GET", base + "/issues/" + number);
   if (issue.state !== "open") {
     return fail("This proposal is already closed");
+  }
+  if (isBusy(labelNames(issue))) {
+    return fail("This proposal is still building. Wait for it to finish or cancel it first.", 409);
+  }
+  const busy = await busyProposalFor(env, name);
+  if (busy) {
+    return fail("Your proposal #" + busy + " is still building. Wait for it to finish or cancel it first.", 409);
   }
 
   const meta = { name: name };

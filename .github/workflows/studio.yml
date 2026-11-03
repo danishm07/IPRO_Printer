@@ -3,6 +3,8 @@
 # Each proposal lives on branch proposal-<issue number> with one pull request; Cloudflare Pages
 # gives that branch its own preview link.
 name: Studio build
+# The Studio finds a proposal's run by this name when someone presses Cancel.
+run-name: Proposal #${{ github.event.issue.number }}
 
 on:
   issues:
@@ -58,9 +60,11 @@ jobs:
           gh label create building --color FBCA04 --force > /dev/null
           gh label create ready --color 0E8A16 --force > /dev/null
           gh label create failed --color B60205 --force > /dev/null
+          gh label create cancelled --color BFBFBF --force > /dev/null
           gh issue edit "$NUMBER" --add-label building
           gh issue edit "$NUMBER" --remove-label ready || true
           gh issue edit "$NUMBER" --remove-label failed || true
+          gh issue edit "$NUMBER" --remove-label cancelled || true
 
       - name: Collect the request
         run: |
@@ -90,7 +94,11 @@ jobs:
 
       - name: Save the change
         run: |
-          git add -A site proposals
+          git add -A site
+          # proposals/ only exists once someone has attached an image
+          if [ -d proposals ]; then
+            git add -A proposals
+          fi
           if git diff --cached --quiet; then
             echo "Claude made no file changes." > .studio/nochange
             exit 1
@@ -128,4 +136,10 @@ jobs:
           printf '<!-- studio:failed -->\n%s\n' "$REASON" > .studio/failed.md
           gh issue comment "$NUMBER" --body-file .studio/failed.md || true
           gh issue edit "$NUMBER" --add-label failed || true
+          gh issue edit "$NUMBER" --remove-label building || true
+
+      - name: Report a cancelled build
+        if: cancelled()
+        run: |
+          gh issue edit "$NUMBER" --add-label cancelled || true
           gh issue edit "$NUMBER" --remove-label building || true

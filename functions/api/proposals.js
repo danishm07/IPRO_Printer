@@ -58,6 +58,8 @@ function shape(env, issue, pulls) {
     status = "closed";
   } else if (labels.indexOf("building") !== -1) {
     status = "building";
+  } else if (labels.indexOf("cancelled") !== -1) {
+    status = "cancelled";
   } else if (labels.indexOf("failed") !== -1) {
     status = "failed";
   } else if (labels.indexOf("ready") !== -1) {
