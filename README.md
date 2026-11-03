@@ -38,7 +38,7 @@ Teammates don't need a GitHub or Claude account. They need the Studio link and t
 GitHub → your profile → **Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token**.
 
 - Repository access: **Only select repositories** → this repo.
-- Permissions: **Actions**, **Contents**, **Issues** and **Pull requests** set to **Read and write**, plus **Checks** set to **Read-only** (Metadata read-only is added automatically). Actions lets the Studio cancel and rerun builds; Checks lets it see when Cloudflare has published a preview and at what address.
+- Permissions: **Actions**, **Contents**, **Issues** and **Pull requests** set to **Read and write** (Metadata read-only is added automatically). Actions lets the Studio cancel and rerun builds.
 - Pick an expiry date that lasts past the end of the semester.
 
 Copy the token. It goes into Cloudflare in the next step. The Studio acts as you on GitHub, which is what lets the workflow run for teammates who have no GitHub account.

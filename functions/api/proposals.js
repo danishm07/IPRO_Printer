@@ -21,34 +21,64 @@ query($owner: String!, $name: String!) {
 
 let cache = null;
 
-// Cloudflare Pages reports each branch deploy on GitHub as a check named "Cloudflare Pages",
-// including the branch's preview address. Reading it means the Studio only offers a preview
-// once it is really published, at the address Cloudflare actually gave it.
-// Needs the GitHub token to have Checks: read. Without it, deploy stays "unknown" and the
-// page works out the address from its own domain instead.
-async function deployInfo(env, number) {
-  const repo = repoParts(env);
-  const path = "/repos/" + repo.owner + "/" + repo.name + "/commits/proposal-" + number + "/check-runs?check_name=" + encodeURIComponent("Cloudflare Pages");
-  try {
-    const data = await gh(env, "GET", path);
-    const run = (data.check_runs || [])[0];
-    if (!run) {
-      return { deploy: "publishing", url: "", version: "" };
-    }
-    const summary = (run.output && run.output.summary) || "";
-    const match = /Branch Preview URL:[\s\S]*?href='([^']+)'/.exec(summary);
-    const url = match ? match[1].replace(/\/$/, "") + "/viewer/" : "";
-    const version = (run.head_sha || "").slice(0, 7);
-    if (run.status !== "completed") {
-      return { deploy: "publishing", url: url, version: version };
-    }
-    if (run.conclusion !== "success") {
-      return { deploy: "failed", url: url, version: version };
-    }
-    return { deploy: "live", url: url, version: version };
-  } catch (err) {
+// Has Cloudflare published this proposal's latest build yet?
+// We fetch the viewer page from the proposal's preview address and compare it with the file on
+// the proposal's branch (by git blob id). Same file means the preview is live. This needs no
+// extra GitHub permission and works when the repo is private.
+const PUBLISH_GRACE_MS = 10 * 60 * 1000;
+
+function projectFrom(request, env) {
+  const host = new URL(request.url).hostname;
+  const match = /([a-z0-9-]+)\.pages\.dev$/i.exec(host);
+  if (match) {
+    return match[1];
+  }
+  return env.PAGES_PROJECT || "";
+}
+
+async function blobId(bytes) {
+  const header = new TextEncoder().encode("blob " + bytes.length + "\0");
+  const whole = new Uint8Array(header.length + bytes.length);
+  whole.set(header, 0);
+  whole.set(bytes, header.length);
+  const digest = await crypto.subtle.digest("SHA-1", whole);
+  return Array.from(new Uint8Array(digest)).map(function (b) {
+    return b.toString(16).padStart(2, "0");
+  }).join("");
+}
+
+async function deployInfo(env, project, proposal) {
+  if (!project) {
     return { deploy: "unknown", url: "", version: "" };
   }
+  const repo = repoParts(env);
+  const url = "https://proposal-" + proposal.number + "." + project + ".pages.dev/viewer/";
+  let expected = "";
+  try {
+    const file = await gh(env, "GET", "/repos/" + repo.owner + "/" + repo.name + "/contents/site/viewer/index.html?ref=proposal-" + proposal.number);
+    expected = file.sha;
+  } catch (err) {
+    return { deploy: "unknown", url: url, version: "" };
+  }
+  const version = expected.slice(0, 7);
+  try {
+    const res = await fetch(url + "?check=" + Date.now(), { cf: { cacheTtl: 0 } });
+    if (res.ok) {
+      const bytes = new Uint8Array(await res.arrayBuffer());
+      const served = await blobId(bytes);
+      if (served === expected) {
+        return { deploy: "live", url: url, version: version };
+      }
+    }
+  } catch (err) {
+    // not reachable yet
+  }
+  // If the comparison never matches (for example Cloudflare changed the file), stop waiting after a while.
+  const age = Date.now() - new Date(proposal.builtAt || 0).getTime();
+  if (proposal.builtAt && age > PUBLISH_GRACE_MS) {
+    return { deploy: "live", url: url, version: version };
+  }
+  return { deploy: "publishing", url: url, version: version };
 }
 
 function shape(env, issue, pulls) {
@@ -144,12 +174,13 @@ export async function onRequestGet(context) {
   const proposals = data.repository.issues.nodes.map(function (issue) {
     return shape(env, issue, pulls);
   });
+  const project = projectFrom(context.request, env);
   const lookups = proposals.map(async function (proposal) {
     const open = proposal.status !== "merged" && proposal.status !== "closed";
     if (!open || !proposal.hasBuild) {
       return;
     }
-    const info = await deployInfo(env, proposal.number);
+    const info = await deployInfo(env, project, proposal);
     proposal.deploy = info.deploy;
     proposal.preview = info.url;
     proposal.version = info.version;
