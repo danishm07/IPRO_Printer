@@ -1929,14 +1929,14 @@ function buildDisplay() {
 // Keypad: modeled keys that morph between current and planned layouts
 // =====================================================================
 // Plane fitted to the scanned keypad area (mm): y = A*x + B*z + C.
-const KEYPAD = { a: -0.6846, b: -0.0072, c: 104.2767, cx: 73, cz: 1.0, lift: 2.0, plateU: 30, plateR: 48 };
+const KEYPAD = { a: -0.6846, b: -0.0072, c: 104.2767, cx: 73, cz: 1.0, lift: 2.0, plateU: 34, plateR: 48 };
 // r = to the user's right (toward -z), u = toward the screen. Sizes in mm.
 const KEY_SPECS = [
-  { id: "up", glyph: "▲", cur: [0, 6.6, 6.6, 4.2, 1.0], pl: [0, 10.2, 8.4, 8.4, 1.6] },
-  { id: "down", glyph: "▼", cur: [0, -6.6, 6.6, 4.2, 1.0], pl: [0, -10.2, 8.4, 8.4, 1.6] },
-  { id: "left", glyph: "◀", cur: [-6.6, 0, 4.2, 6.6, 1.0], pl: [-10.2, 0, 8.4, 8.4, 1.6] },
-  { id: "right", glyph: "▶", cur: [6.6, 0, 4.2, 6.6, 1.0], pl: [10.2, 0, 8.4, 8.4, 1.6] },
-  { id: "ok", glyph: "OK", cur: [0, 0, 6.2, 6.2, 1.1], pl: [0, 0, 8.4, 8.4, 1.6] },
+  { id: "up", glyph: "▲", cur: [0, 6.6, 6.6, 4.2, 1.0], pl: [0, 11.6, 9.2, 9.2, 1.6] },
+  { id: "down", glyph: "▼", cur: [0, -6.6, 6.6, 4.2, 1.0], pl: [0, -11.6, 9.2, 9.2, 1.6] },
+  { id: "left", glyph: "◀", cur: [-6.6, 0, 4.2, 6.6, 1.0], pl: [-11.6, 0, 9.2, 9.2, 1.6] },
+  { id: "right", glyph: "▶", cur: [6.6, 0, 4.2, 6.6, 1.0], pl: [11.6, 0, 9.2, 9.2, 1.6] },
+  { id: "ok", glyph: "OK", cur: [0, 0, 6.2, 6.2, 1.1], pl: [0, 0, 9.2, 9.2, 1.6] },
   { id: "softL", glyph: "", cur: [-14.5, 9.5, 6.0, 3.4, 0.9], pl: [-18.0, 10.6, 8.0, 5.2, 1.4] },
   { id: "softR", glyph: "", cur: [14.5, 9.5, 6.0, 3.4, 0.9], pl: [18.0, 10.6, 8.0, 5.2, 1.4] }
 ];
@@ -1957,9 +1957,9 @@ function glyphTexture(text) {
   return t;
 }
 
-function roundedKeyGeometry() {
+function roundedKeyGeometry(cornerRadius) {
   const s = new THREE.Shape();
-  const r = 0.3;
+  const r = cornerRadius;
   s.moveTo(-0.5 + r, -0.5);
   s.lineTo(0.5 - r, -0.5);
   s.quadraticCurveTo(0.5, -0.5, 0.5, -0.5 + r);
@@ -2008,9 +2008,11 @@ function buildKeypad() {
   );
   plate.position.z = -6 * MM;
   root.add(plate);
+  keypad.plate = plate;
   conceptMeshes.push(plate);
 
-  const geo = roundedKeyGeometry();
+  const geo = roundedKeyGeometry(0.3);
+  const squareGeo = roundedKeyGeometry(0.12);
   for (const spec of KEY_SPECS) {
     const group = new THREE.Group();
     const mat = new THREE.MeshStandardMaterial({ color: KEY_CUR_COLOR.clone(), roughness: 0.55, metalness: 0.02, emissive: 0x000000 });
@@ -2033,7 +2035,7 @@ function buildKeypad() {
       group.add(glyph);
     }
     root.add(group);
-    keypad.keys.push({ id: spec.id, spec: spec, group: group, mesh: mesh, mat: mat, glyph: glyph, depth: 0, vel: 0, glow: 0, pressAt: -1, hover: 0 });
+    keypad.keys.push({ squareGeo: squareGeo, roundGeo: geo, id: spec.id, spec: spec, group: group, mesh: mesh, mat: mat, glyph: glyph, depth: 0, vel: 0, glow: 0, pressAt: -1, hover: 0 });
   }
   keypad.root = root;
   keypad.center = root.position.clone();
@@ -2042,6 +2044,10 @@ function buildKeypad() {
 
 const keyMeshes = [];
 function updateKeypad(now, dt) {
+  // plate is built tall enough for the planned layout; shrink it back for the stock one
+  if (keypad.plate) {
+    keypad.plate.scale.y = lerp(30 / 34, 1, morph);
+  }
   for (const k of keypad.keys) {
     const c = k.spec.cur;
     const p = k.spec.pl;
@@ -2070,6 +2076,9 @@ function updateKeypad(now, dt) {
     k.glow = Math.max(0, k.glow - dt * 3.2);
     k.hover = approach(k.hover, hoverKey === k.id ? 1 : 0, 14, dt);
     k.group.position.set(r * MM, u * MM, (k.depth + k.hover * 0.25) * MM);
+    // arrow and OK keys get sharper, more square corners in the planned design
+    const wantSquare = morph > 0.5 && ["up", "down", "left", "right", "ok"].indexOf(k.id) >= 0;
+    k.mesh.geometry = wantSquare ? k.squareGeo : k.roundGeo;
     k.mesh.scale.set(w * MM, h * MM, hgt * MM);
     k.mesh.position.z = 0;
     const glyphSize = lerp(3.4, 5.0, morph);
