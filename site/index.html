@@ -598,11 +598,15 @@ input:focus, textarea:focus { outline: 2px solid var(--focus); outline-offset: 1
   // The viewer runs with ?embed=1 so the model gets the whole frame; its Details button brings the panel back.
   function viewerUrl(proposal) {
     if (proposal) {
-      // The build time makes each new build a new address, so the browser never shows an older copy.
-      const version = encodeURIComponent(proposal.builtAt || "");
-      return proposal.preview + "?embed=1&v=" + version;
+      // The build's version makes each new build a new address, so the browser never shows an older copy.
+      const version = encodeURIComponent(versionOf(proposal));
+      return previewFor(proposal) + "?embed=1&v=" + version;
     }
     return "/viewer/?embed=1";
+  }
+
+  function versionOf(proposal) {
+    return proposal.version || proposal.builtAt || "";
   }
 
   function showViewer(proposal) {
@@ -610,6 +614,7 @@ input:focus, textarea:focus { outline: 2px solid var(--focus); outline-offset: 1
     const note = $("now-note");
     if (proposal) {
       state.showing = proposal.number;
+      state.shownVersion = versionOf(proposal);
       frame.src = viewerUrl(proposal);
       note.textContent = "Proposal #" + proposal.number + " by " + (proposal.name || "someone") + ". If it still looks unchanged, wait a minute and press Reload.";
       $("stage").classList.add("preview");
@@ -625,9 +630,28 @@ input:focus, textarea:focus { outline: 2px solid var(--focus); outline-offset: 1
     render();
   }
 
+  // Cloudflare's reported address when we have it; otherwise "proposal-N." in front of this site's own address.
+  function previewFor(p) {
+    if (p.preview) {
+      return p.preview;
+    }
+    const match = /([a-z0-9-]+)\.pages\.dev$/i.exec(window.location.hostname);
+    if (!match) {
+      return "";
+    }
+    return "https://proposal-" + p.number + "." + match[1] + ".pages.dev/viewer/";
+  }
+
+  function isPublishing(p) {
+    return p.status === "ready" && p.deploy === "publishing";
+  }
+
   function previewable(p) {
+    if (!p.hasBuild || isPublishing(p) || !previewFor(p)) {
+      return false;
+    }
     // A failed or cancelled follow-up still leaves the last good version on the branch.
-    return Boolean(p.preview) && p.status !== "merged" && p.status !== "closed";
+    return p.status !== "merged" && p.status !== "closed";
   }
 
   function isMine(p) {
@@ -688,7 +712,7 @@ input:focus, textarea:focus { outline: 2px solid var(--focus); outline-offset: 1
   function checkReady() {
     const seen = seenMap();
     const fresh = state.proposals.find(function (p) {
-      return isMine(p) && p.status === "ready" && p.builtAt && seen[p.number] !== p.builtAt && state.showing !== p.number;
+      return isMine(p) && p.status === "ready" && !isPublishing(p) && p.builtAt && seen[p.number] !== p.builtAt && state.showing !== p.number;
     });
     const banner = $("ready-banner");
     if (!fresh) {
@@ -859,7 +883,12 @@ input:focus, textarea:focus { outline: 2px solid var(--focus); outline-offset: 1
     if (p.status === "building" || p.status === "queued") {
       pill.append(el("span", "dot"));
     }
-    pill.append(STATUS_TEXT[p.status] || p.status);
+    if (isPublishing(p)) {
+      pill.className = "pill building";
+      pill.append(el("span", "dot"), "Publishing preview");
+    } else {
+      pill.append(STATUS_TEXT[p.status] || p.status);
+    }
     top.append(title, pill);
     box.append(top);
 
@@ -892,6 +921,9 @@ input:focus, textarea:focus { outline: 2px solid var(--focus); outline-offset: 1
     if (p.status === "building" || p.status === "queued") {
       box.append(el("div", "note", "Claude is working on this. It usually takes 3 to 8 minutes."));
     }
+    if (isPublishing(p)) {
+      box.append(el("div", "note", "Claude is done. Cloudflare is publishing the preview, which usually takes under a minute."));
+    }
     if (p.summary && p.status !== "failed") {
       const sum = el("div", "summary");
       sum.append(el("span", "lbl", "What Claude changed"), p.summary);
@@ -907,7 +939,7 @@ input:focus, textarea:focus { outline: 2px solid var(--focus); outline-offset: 1
     }
 
     const actions = el("div", "row");
-    if (p.preview && p.status !== "merged" && p.status !== "closed") {
+    if (previewable(p)) {
       const isShowing = state.showing === p.number;
       const preview = el("button", "btn" + (isShowing ? " on" : ""), isShowing ? "Showing" : "Preview");
       preview.type = "button";
@@ -1083,6 +1115,10 @@ input:focus, textarea:focus { outline: 2px solid var(--focus); outline-offset: 1
       });
       if (state.showing && !showingStill) {
         showViewer(null);
+      } else if (showingStill && versionOf(showingStill) !== state.shownVersion) {
+        // A newer build of the proposal on screen was published: load it.
+        state.shownVersion = versionOf(showingStill);
+        $("frame").src = viewerUrl(showingStill);
       }
       checkReady();
       $("updated").textContent = "Updated " + new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
@@ -1100,7 +1136,7 @@ input:focus, textarea:focus { outline: 2px solid var(--focus); outline-offset: 1
   function schedule() {
     clearTimeout(state.timer);
     const busy = state.proposals.some(function (p) {
-      return p.status === "building" || p.status === "queued";
+      return p.status === "building" || p.status === "queued" || isPublishing(p);
     });
     state.timer = setTimeout(function () {
       if (document.visibilityState === "visible") {

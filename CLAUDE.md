@@ -25,10 +25,14 @@ This repo is a group project that redesigns the Zebra ZQ630 Plus mobile printer.
 
 ## Rules for building a proposal
 
-1. Make the smallest change that does what was asked. Keep everything else working exactly as before.
+1. Do everything the request asks, all of it. Keep everything else working exactly as before. Do not skip part of a request because it is awkward: if something is baked into the scan (its colours and shapes come from the texture, such as the yellow latch and labels), change it anyway by adding new geometry over that spot (a thin coloured shell or panel that follows the surface, the way the screen and keypad sit on the scan), by recolouring that region of the texture in the shader or a canvas copy, or by another way that visibly does what was asked. Only leave something out if it is truly impossible, and then say exactly why.
 2. Unless the request says otherwise, a design change belongs to the Planned design and Current stays as the stock printer.
 3. Code style: one statement per line, no chained assignments, no clever one-liners, descriptive names, short comments only where the reason is not obvious.
 4. No new libraries or external requests beyond what the page already loads.
 5. Run `node scripts/check.mjs` and fix anything it reports.
 6. Do not run git. The workflow commits and pushes for you.
-7. Finish by writing `.studio/summary.md`: two to four plain sentences for non-programmers saying what changed and where to look (which tab, Current or Planned, what to click). No code, no file names, no jargon. If you could not do part of the request, say which part and why, plainly.
+7. Finish by writing `.studio/summary.md` for non-programmers, in this shape:
+   - One sentence saying what changed overall and where to look (Current or Planned, which tab, what to click or rotate to).
+   - Then a short list with one line per change: which part, what it looked like or did before, what it does now, with exact values a teammate could ask to tweak (colours as names plus hex, such as "pink #E8559A", sizes in millimetres, speeds, text). This list is how teammates fine-tune the result in a follow-up ("make the keys a lighter pink"), so leave nothing out.
+   - If any part of the request was not done, a last line starting "Not done:" saying what and why.
+   No code and no file names.

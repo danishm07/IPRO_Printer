@@ -84,7 +84,8 @@ jobs:
             You are building one design proposal for the ZQ630 Plus 3D viewer. Read CLAUDE.md first and follow its rules.
             The request is in .studio/request.md. It may include follow-ups; the latest one wins when they conflict.
             Make the change, mostly in site/viewer/index.html. Then run `node scripts/check.mjs` and fix anything it reports.
-            Finish by writing .studio/summary.md: two to four plain sentences for non-programmers, as CLAUDE.md describes.
+            Do every part of the request, including parts that touch the scanned model (see CLAUDE.md rule 1).
+            Finish by writing .studio/summary.md in the shape CLAUDE.md rule 7 describes: one overview sentence, then one line per change with exact values.
           claude_args: >-
             --max-turns 40
             --allowedTools "Read,Edit,MultiEdit,Write,Glob,Grep,Bash(node scripts/check.mjs)"

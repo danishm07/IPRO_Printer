@@ -1,7 +1,7 @@
 // GET /api/proposals
 // Everything the Studio page shows, in one GitHub query: each proposal's request, follow-ups,
 // build status, Claude's summary, votes and preview link. Cached for a few seconds.
-import { json, graphql, repoParts, readMarker, plainText, isAdmin } from "../../lib/studio.js";
+import { json, gh, graphql, repoParts, readMarker, plainText, isAdmin } from "../../lib/studio.js";
 
 const QUERY = `
 query($owner: String!, $name: String!) {
@@ -21,8 +21,34 @@ query($owner: String!, $name: String!) {
 
 let cache = null;
 
-function previewUrl(env, number) {
-  return "https://proposal-" + number + "." + env.PAGES_PROJECT + ".pages.dev/viewer/";
+// Cloudflare Pages reports each branch deploy on GitHub as a check named "Cloudflare Pages",
+// including the branch's preview address. Reading it means the Studio only offers a preview
+// once it is really published, at the address Cloudflare actually gave it.
+// Needs the GitHub token to have Checks: read. Without it, deploy stays "unknown" and the
+// page works out the address from its own domain instead.
+async function deployInfo(env, number) {
+  const repo = repoParts(env);
+  const path = "/repos/" + repo.owner + "/" + repo.name + "/commits/proposal-" + number + "/check-runs?check_name=" + encodeURIComponent("Cloudflare Pages");
+  try {
+    const data = await gh(env, "GET", path);
+    const run = (data.check_runs || [])[0];
+    if (!run) {
+      return { deploy: "publishing", url: "", version: "" };
+    }
+    const summary = (run.output && run.output.summary) || "";
+    const match = /Branch Preview URL:[\s\S]*?href='([^']+)'/.exec(summary);
+    const url = match ? match[1].replace(/\/$/, "") + "/viewer/" : "";
+    const version = (run.head_sha || "").slice(0, 7);
+    if (run.status !== "completed") {
+      return { deploy: "publishing", url: url, version: version };
+    }
+    if (run.conclusion !== "success") {
+      return { deploy: "failed", url: url, version: version };
+    }
+    return { deploy: "live", url: url, version: version };
+  } catch (err) {
+    return { deploy: "unknown", url: "", version: "" };
+  }
 }
 
 function shape(env, issue, pulls) {
@@ -91,7 +117,10 @@ function shape(env, issue, pulls) {
     builtAt: builtAt,
     approve: approve,
     reject: reject,
-    preview: pull || summary ? previewUrl(env, issue.number) : "",
+    hasBuild: Boolean(pull || summary),
+    deploy: "unknown",
+    preview: "",
+    version: "",
     pullUrl: pull ? pull.url : ""
   };
 }
@@ -115,6 +144,17 @@ export async function onRequestGet(context) {
   const proposals = data.repository.issues.nodes.map(function (issue) {
     return shape(env, issue, pulls);
   });
+  const lookups = proposals.map(async function (proposal) {
+    const open = proposal.status !== "merged" && proposal.status !== "closed";
+    if (!open || !proposal.hasBuild) {
+      return;
+    }
+    const info = await deployInfo(env, proposal.number);
+    proposal.deploy = info.deploy;
+    proposal.preview = info.url;
+    proposal.version = info.version;
+  });
+  await Promise.all(lookups);
   const result = {
     proposals: proposals,
     liveUrl: "/viewer/",

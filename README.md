@@ -38,7 +38,7 @@ Teammates don't need a GitHub or Claude account. They need the Studio link and t
 GitHub → your profile → **Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token**.
 
 - Repository access: **Only select repositories** → this repo.
-- Permissions: **Actions**, **Contents**, **Issues** and **Pull requests** set to **Read and write** (Metadata read-only is added automatically). Actions is what lets the Studio cancel and rerun builds.
+- Permissions: **Actions**, **Contents**, **Issues** and **Pull requests** set to **Read and write**, plus **Checks** set to **Read-only** (Metadata read-only is added automatically). Actions lets the Studio cancel and rerun builds; Checks lets it see when Cloudflare has published a preview and at what address.
 - Pick an expiry date that lasts past the end of the semester.
 
 Copy the token. It goes into Cloudflare in the next step. The Studio acts as you on GitHub, which is what lets the workflow run for teammates who have no GitHub account.
@@ -55,7 +55,6 @@ Copy the token. It goes into Cloudflare in the next step. The Studio acts as you
 | `GITHUB_REPO` | `danishm07/IPRO_Printer` |
 | `TEAM_PASSCODE` | a passcode you share with the team |
 | `ADMIN_PASSCODE` | a different passcode only you know (for Merge and Close) |
-| `PAGES_PROJECT` | the project name, the part before `.pages.dev` |
 
 4. Redeploy (Deployments → the latest one → Retry deployment) so the variables take effect.
 5. Open `https://<project>.pages.dev`, sign in with the team passcode, and send a small test idea.
