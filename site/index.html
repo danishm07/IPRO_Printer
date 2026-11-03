@@ -598,7 +598,9 @@ input:focus, textarea:focus { outline: 2px solid var(--focus); outline-offset: 1
   // The viewer runs with ?embed=1 so the model gets the whole frame; its Details button brings the panel back.
   function viewerUrl(proposal) {
     if (proposal) {
-      return proposal.preview + "?embed=1";
+      // The build time makes each new build a new address, so the browser never shows an older copy.
+      const version = encodeURIComponent(proposal.builtAt || "");
+      return proposal.preview + "?embed=1&v=" + version;
     }
     return "/viewer/?embed=1";
   }
@@ -716,7 +718,7 @@ input:focus, textarea:focus { outline: 2px solid var(--focus); outline-offset: 1
   });
   $("open-tab").addEventListener("click", function () {
     // The full page, with its details panel.
-    const url = $("frame").src.replace(/\?embed=1(&t=\d+)?/, "");
+    const url = $("frame").src.replace(/\?embed=1.*$/, "");
     window.open(url, "_blank", "noopener");
   });
 
