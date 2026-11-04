@@ -1859,10 +1859,10 @@ function buildDisplay() {
 
   // fixed tray under the module covers the opening when the screen tilts
   const tray = new THREE.Mesh(
-    new THREE.BoxGeometry((DISPLAY.bezelW + 4) * MM, (DISPLAY.bezelH + 4) * MM, 5 * MM),
+    new THREE.BoxGeometry((DISPLAY.bezelW + 4) * MM, (DISPLAY.bezelH + 4) * MM, 14 * MM),
     new THREE.MeshStandardMaterial({ color: 0x0a0d0f, roughness: 0.9 })
   );
-  tray.position.z = -2.6 * MM;
+  tray.position.z = -7.1 * MM;
   root.add(tray);
   conceptMeshes.push(tray);
 
@@ -1912,6 +1912,7 @@ function buildDisplay() {
   display.pivot = pivot;
   display.root = root;
   display.baseCenter = center.clone();
+  display.baseQuat = root.quaternion.clone();
   display.center = center.clone().addScaledVector(f.n, DISPLAY.lift * MM);
   display.n = f.n.clone();
   display.frame = f;
@@ -2208,9 +2209,15 @@ cbAuto.addEventListener("change", updateDisplayControls);
 function updateDisplay(dt) {
   sun = approach(sun, Number(slSun.value) / 100, 6, dt);
   display.tilt = approach(display.tilt, tiltTarget, 6, dt);
-  // in Planned the screen sits level with the keypad backplate (2.0 mm lift instead of 0.8 mm)
+  // in Planned the screen lies in exactly the same plane as the keypad backplate (same angle, same height)
   const screenLift = lerp(DISPLAY.lift, KEYPAD.lift, morph);
-  display.root.position.copy(display.baseCenter).addScaledVector(display.n, screenLift * MM);
+  const currentPos = display.baseCenter.clone().addScaledVector(display.n, screenLift * MM);
+  const keypadNormal = new THREE.Vector3(0, 0, 1).applyQuaternion(keypad.root.quaternion);
+  const planeY = KEYPAD.a * DISPLAY.cx + KEYPAD.b * DISPLAY.cz + KEYPAD.c;
+  const plannedPos = new THREE.Vector3(DISPLAY.cx, planeY, DISPLAY.cz).multiplyScalar(MM);
+  plannedPos.addScaledVector(keypadNormal, KEYPAD.lift * MM);
+  display.root.position.copy(currentPos).lerp(plannedPos, morph);
+  display.root.quaternion.copy(display.baseQuat).slerp(keypad.root.quaternion, morph);
   display.pivot.rotation.x = THREE.MathUtils.degToRad(display.tilt);
   const planned = morph > 0.5;
   const adaptive = planned && cbAuto.checked;
