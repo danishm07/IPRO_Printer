@@ -643,7 +643,7 @@ h1 {
       </div>
       <div class="ctl">
         <label for="sl-tilt">Screen tilt <span id="v-tilt">0°</span></label>
-        <input type="range" id="sl-tilt" min="0" max="45" value="0" disabled>
+        <input type="range" id="sl-tilt" min="0" max="60" value="25" disabled>
         <span class="sub" id="tilt-sub">Fixed in the current design.</span>
       </div>
       <label class="check"><input type="checkbox" id="cb-auto" checked disabled> Adaptive brightness</label>
@@ -1903,21 +1903,20 @@ function buildDisplay() {
 
   // visible hinge barrel along the bottom edge of the screen (Planned only)
   const hingeGroup = new THREE.Group();
-  const hingeMat = new THREE.MeshStandardMaterial({ color: 0x9aa3a8, roughness: 0.35, metalness: 0.8 });
-  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(1.6 * MM, 1.6 * MM, DISPLAY.bezelW * 0.7 * MM, 24), hingeMat);
+  const hingeMat = new THREE.MeshStandardMaterial({ color: 0xd9a88f, roughness: 0.4, metalness: 0.3 });
+  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(2.4 * MM, 2.4 * MM, DISPLAY.bezelW * MM, 28), hingeMat);
   barrel.rotation.z = Math.PI / 2;
   hingeGroup.add(barrel);
-  const capGeometry = new THREE.CylinderGeometry(2.1 * MM, 2.1 * MM, 2.2 * MM, 24);
-  const capLeft = new THREE.Mesh(capGeometry, hingeMat);
-  capLeft.rotation.z = Math.PI / 2;
-  capLeft.position.x = -DISPLAY.bezelW * 0.35 * MM;
-  hingeGroup.add(capLeft);
-  const capRight = new THREE.Mesh(capGeometry, hingeMat);
-  capRight.rotation.z = Math.PI / 2;
-  capRight.position.x = DISPLAY.bezelW * 0.35 * MM;
-  hingeGroup.add(capRight);
-  hingeGroup.position.z = 0.4 * MM;
+  hingeGroup.position.z = 0.6 * MM;
   pivot.add(hingeGroup);
+  // light grey plate that stays flat under the screen and shows as it lifts
+  const basePlate = new THREE.Mesh(
+    new THREE.BoxGeometry(DISPLAY.bezelW * MM, DISPLAY.bezelH * MM, 0.6 * MM),
+    new THREE.MeshStandardMaterial({ color: 0xcfd6d1, roughness: 0.7 })
+  );
+  basePlate.position.set(0, 0, 0.1 * MM);
+  root.add(basePlate);
+  display.basePlate = basePlate;
   display.hinge = hingeGroup;
 
   display.pivot = pivot;
@@ -2206,7 +2205,7 @@ function updateDisplayControls() {
   const planned = mode === "planned";
   slTilt.disabled = !planned;
   cbAuto.disabled = !planned;
-  document.getElementById("tilt-sub").textContent = planned ? "Hinged at the keypad edge: drag the slider to set the viewing angle (0–45°)." : "Fixed in the current design.";
+  document.getElementById("tilt-sub").textContent = planned ? "Hinged at the keypad edge: drag the slider to set the viewing angle (0–60°)." : "Fixed in the current design.";
   tiltTarget = planned ? Number(slTilt.value) : 0;
   document.getElementById("v-tilt").textContent = (planned ? slTilt.value : "0") + "°";
 }
@@ -2231,9 +2230,10 @@ function updateDisplay(dt) {
   display.root.quaternion.copy(display.baseQuat).slerp(keypad.root.quaternion, morph);
   display.pivot.rotation.x = THREE.MathUtils.degToRad(display.tilt);
   display.hinge.visible = morph > 0.5;
+  display.basePlate.visible = morph > 0.5;
   const planned = morph > 0.5;
   const adaptive = planned && cbAuto.checked;
-  const tiltRelief = planned ? 1 - 0.45 * (display.tilt / 45) : 1;
+  const tiltRelief = planned ? 1 - 0.45 * (display.tilt / 60) : 1;
   const glare = sun * 0.82 * tiltRelief * (adaptive ? 0.32 : 1);
   display.veil.material.opacity = glare;
   display.mat.emissiveIntensity = 0.85 + (adaptive ? sun * 1.3 : 0);
