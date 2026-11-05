@@ -1982,21 +1982,37 @@ function glyphTexture(text) {
 
 function labelTexture(text) {
   const c = document.createElement("canvas");
-  c.width = 512;
-  c.height = 256;
+  c.width = 1024;
+  c.height = 512;
   const g = c.getContext("2d");
   g.fillStyle = "#ffffff";
-  g.textAlign = "center";
+  g.textAlign = "left";
   g.textBaseline = "alphabetic";
-  // shrink the font until the word fits well inside the round key
-  let fontSize = 170;
-  g.font = "700 " + fontSize + "px " + FONT;
-  while (g.measureText(text).width > 445 && fontSize > 20) {
-    fontSize -= 2;
+  // letters are drawn one by one so the gap between them can be tightened
+  const letters = text.split("");
+  let fontSize = 340;
+  let tracking = 0;
+  let totalWidth = 0;
+  while (fontSize > 40) {
     g.font = "700 " + fontSize + "px " + FONT;
+    tracking = -fontSize * 0.06;
+    totalWidth = 0;
+    for (const letter of letters) {
+      totalWidth += g.measureText(letter).width + tracking;
+    }
+    totalWidth -= tracking;
+    if (totalWidth <= 890) {
+      break;
+    }
+    fontSize -= 4;
   }
+  let penX = (1024 - totalWidth) / 2;
   // centre on the capital letters so the text sits in the middle of the key
-  g.fillText(text, 256, 128 + fontSize * 0.36);
+  const baseline = 256 + fontSize * 0.36;
+  for (const letter of letters) {
+    g.fillText(letter, penX, baseline);
+    penX += g.measureText(letter).width + tracking;
+  }
   const t = new THREE.CanvasTexture(c);
   t.encoding = THREE.sRGBEncoding;
   t.anisotropy = 8;
