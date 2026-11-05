@@ -2130,7 +2130,7 @@ function buildKeypad() {
 }
 
 // Planned design only: round power button centred under the keypad backplate
-const POWER_BUTTON = { diameter: 9.0, height: 2.0, gap: 3.0 };
+const POWER_BUTTON = { diameter: 9.0, height: 3.0, gap: 2.0, sink: 5.0 };
 
 function powerIconTexture() {
   const c = document.createElement("canvas");
@@ -2179,11 +2179,11 @@ function updatePowerButton() {
   // just under the plate's bottom edge, on the same centre line
   const u = -(KEYPAD.plateU / 2 + POWER_BUTTON.gap + d / 2);
   p.group.visible = morph > 0.02;
-  p.group.position.set(0, u * MM, -1.5 * MM);
+  p.group.position.set(0, u * MM, -POWER_BUTTON.sink * MM);
   p.group.scale.setScalar(Math.max(morph, 0.001));
-  p.body.scale.set(d * MM, d * MM, (h + 1.5) * MM);
+  p.body.scale.set(d * MM, d * MM, (h + POWER_BUTTON.sink) * MM);
   p.icon.scale.set(d * 0.6 * MM, d * 0.6 * MM, 1);
-  p.icon.position.z = (h + 1.5 + 0.3) * MM;
+  p.icon.position.z = (h + POWER_BUTTON.sink + 0.3) * MM;
 }
 
 const keyMeshes = [];
