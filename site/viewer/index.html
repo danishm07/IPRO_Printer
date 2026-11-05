@@ -1958,10 +1958,10 @@ const KEY_SPECS = [
   { id: "left", glyph: "◀", cur: [-6.6, 0, 4.2, 6.6, 1.0], pl: [-10.2, 0, 7.2, 7.2, 1.6] },
   { id: "right", glyph: "▶", cur: [6.6, 0, 4.2, 6.6, 1.0], pl: [10.2, 0, 7.2, 7.2, 1.6] },
   { id: "ok", glyph: "OK", cur: [0, 0, 6.2, 6.2, 1.1], pl: [0, 0, 7.2, 7.2, 1.6] },
-  { id: "softL", glyph: "", label: "BACK", cur: [-14.5, 9.5, 6.0, 3.4, 0.9], pl: [-21.5, -5.2, 9.0, 9.0, 1.5] },
-  { id: "softR", glyph: "", label: "HOME", cur: [14.5, 9.5, 6.0, 3.4, 0.9], pl: [-21.5, 5.2, 9.0, 9.0, 1.5] },
-  { id: "menu", glyph: "", label: "MENU", cur: [21.5, 5.2, 0, 0, 0], pl: [21.5, 5.2, 9.0, 9.0, 1.5] },
-  { id: "feed", glyph: "", label: "FEED", cur: [21.5, -5.2, 0, 0, 0], pl: [21.5, -5.2, 9.0, 9.0, 1.5] }
+  { id: "softL", glyph: "", label: "BACK", cur: [-14.5, 9.5, 6.0, 3.4, 0.9], pl: [-21.5, -6.6, 9.0, 9.0, 1.5] },
+  { id: "softR", glyph: "", label: "HOME", cur: [14.5, 9.5, 6.0, 3.4, 0.9], pl: [-21.5, 6.6, 9.0, 9.0, 1.5] },
+  { id: "menu", glyph: "", label: "MENU", cur: [21.5, 5.2, 0, 0, 0], pl: [21.5, 6.6, 9.0, 9.0, 1.5] },
+  { id: "feed", glyph: "", label: "FEED", cur: [21.5, -5.2, 0, 0, 0], pl: [21.5, -6.6, 9.0, 9.0, 1.5] }
 ];
 const keypad = { root: null, keys: [], center: null, n: null };
 
@@ -1982,22 +1982,24 @@ function glyphTexture(text) {
 
 function labelTexture(text) {
   const c = document.createElement("canvas");
-  c.width = 256;
-  c.height = 128;
+  c.width = 512;
+  c.height = 256;
   const g = c.getContext("2d");
   g.fillStyle = "#ffffff";
   g.textAlign = "center";
-  g.textBaseline = "middle";
-  // shrink the font until the word fits well inside the key
-  let fontSize = 84;
+  g.textBaseline = "alphabetic";
+  // shrink the font until the word fits well inside the round key
+  let fontSize = 170;
   g.font = "700 " + fontSize + "px " + FONT;
-  while (g.measureText(text).width > 220 && fontSize > 20) {
+  while (g.measureText(text).width > 445 && fontSize > 20) {
     fontSize -= 2;
     g.font = "700 " + fontSize + "px " + FONT;
   }
-  g.fillText(text, 128, 66);
+  // centre on the capital letters so the text sits in the middle of the key
+  g.fillText(text, 256, 128 + fontSize * 0.36);
   const t = new THREE.CanvasTexture(c);
   t.encoding = THREE.sRGBEncoding;
+  t.anisotropy = 8;
   return t;
 }
 
@@ -2092,8 +2094,18 @@ function buildKeypad() {
       );
       group.add(glyph);
     }
+    let bump = null;
+    if (["up", "down", "left", "right"].indexOf(spec.id) >= 0) {
+      // small raised tactile dot near the key's lower edge, like the F and J keys
+      bump = new THREE.Mesh(
+        new THREE.SphereGeometry(1, 16, 10),
+        new THREE.MeshStandardMaterial({ color: KEY_PL_COLOR.clone().multiplyScalar(1.6), roughness: 0.5, metalness: 0.02 })
+      );
+      bump.userData.keyId = spec.id;
+      group.add(bump);
+    }
     root.add(group);
-    keypad.keys.push({ circleGeo: circleGeo, squareGeo: squareGeo, roundGeo: geo, id: spec.id, spec: spec, group: group, mesh: mesh, mat: mat, glyph: glyph, line: line, depth: 0, vel: 0, glow: 0, pressAt: -1, hover: 0 });
+    keypad.keys.push({ bump: bump, circleGeo: circleGeo, squareGeo: squareGeo, roundGeo: geo, id: spec.id, spec: spec, group: group, mesh: mesh, mat: mat, glyph: glyph, line: line, depth: 0, vel: 0, glow: 0, pressAt: -1, hover: 0 });
   }
   keypad.root = root;
   keypad.center = root.position.clone();
@@ -2155,7 +2167,7 @@ function updateKeypad(now, dt) {
       const showLabel = morph > 0.5;
       k.glyph.visible = showLabel;
       k.line.visible = !showLabel;
-      k.glyph.scale.set(w * 0.86 * MM, w * 0.86 * 0.5 * MM, 1);
+      k.glyph.scale.set(w * 0.92 * MM, w * 0.92 * 0.5 * MM, 1);
       k.line.scale.set(w * 0.55 * MM, h * 0.55 * MM * 2.5, 1);
       k.line.position.z = (hgt * 1.12 + 0.12) * MM;
       k.line.material.color.copy(GLYPH_CUR_COLOR);
@@ -2165,6 +2177,11 @@ function updateKeypad(now, dt) {
       k.glyph.scale.set(w * 0.55 * MM, h * 0.55 * MM * 2.5, 1);
     }
     k.glyph.position.z = (hgt * 1.12 + 0.12) * MM;
+    if (k.bump) {
+      k.bump.visible = morph > 0.5;
+      k.bump.scale.set(1.3 * MM, 0.55 * MM, 0.6 * MM);
+      k.bump.position.set(0, -h * 0.36 * MM, hgt * 1.0 * MM);
+    }
     k.mat.color.copy(KEY_CUR_COLOR).lerp(KEY_PL_COLOR, morph);
     k.mat.emissive.copy(KEY_GLOW).multiplyScalar(k.glow * 0.9 + k.hover * 0.12);
     k.glyph.material.color.copy(GLYPH_CUR_COLOR).lerp(GLYPH_PL_COLOR, morph);
