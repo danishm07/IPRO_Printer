@@ -2096,7 +2096,7 @@ function updateKeypad(now, dt) {
     k.mesh.geometry = wantSquare ? k.squareGeo : k.roundGeo;
     k.mesh.scale.set(w * MM, h * MM, hgt * MM);
     k.mesh.position.z = 0;
-    const glyphSize = lerp(3.4, 5.0, morph);
+    const glyphSize = lerp(3.4, 6.2, morph);
     if (k.spec.glyph) {
       k.glyph.scale.set(glyphSize * MM, glyphSize * MM, 1);
     } else {
