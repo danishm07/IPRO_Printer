@@ -1845,7 +1845,7 @@ function pressKey(k) {
 // Display module (bezel + glass), hinged so it can tilt
 // =====================================================================
 // Plane fitted to the scanned display area (mm): y = A*x + B*z + C.
-const DISPLAY = { a: -0.3044, b: -0.1314, c: 81.9942, cx: 41, cz: 1.0, bezelW: 52, bezelH: 38, screenW: 44, screenH: 33.3, lift: 0.8 };
+const DISPLAY = { a: -0.3044, b: -0.1314, c: 81.9942, cx: 41, cz: 1.0, bezelW: 52, bezelH: 38, screenW: 44, screenH: 33.3, lift: 0.8, trayDepth: 2 };
 const display = { pivot: null, veil: null, mat: null, tilt: 0, center: null, n: null, frame: null };
 
 function buildDisplay() {
@@ -1859,11 +1859,12 @@ function buildDisplay() {
 
   // fixed tray under the module covers the opening when the screen tilts
   const tray = new THREE.Mesh(
-    new THREE.BoxGeometry(DISPLAY.bezelW * MM, (DISPLAY.bezelH + 2) * MM, 7 * MM),
+    new THREE.BoxGeometry((DISPLAY.bezelW - 4) * MM, (DISPLAY.bezelH - 2) * MM, DISPLAY.trayDepth * MM),
     new THREE.MeshStandardMaterial({ color: 0x0a0d0f, roughness: 0.9 })
   );
-  tray.position.z = -3.6 * MM;
+  tray.position.z = (-DISPLAY.lift + DISPLAY.trayDepth / 2) * MM;
   root.add(tray);
+  display.tray = tray;
   conceptMeshes.push(tray);
 
   // hinge sits on the bottom edge (keypad side); the module rotates up toward the user
@@ -2229,6 +2230,8 @@ function updateDisplay(dt) {
   display.root.position.copy(currentPos).lerp(plannedPos, morph);
   display.root.quaternion.copy(display.baseQuat).slerp(keypad.root.quaternion, morph);
   display.pivot.rotation.x = THREE.MathUtils.degToRad(display.tilt);
+  // the dark tray rests directly on the printer surface (its back face is at the surface)
+  display.tray.position.z = (-screenLift + DISPLAY.trayDepth / 2) * MM;
   display.hinge.visible = morph > 0.5;
   display.basePlate.visible = morph > 0.5;
   const planned = morph > 0.5;
