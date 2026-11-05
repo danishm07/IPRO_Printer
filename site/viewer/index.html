@@ -2123,13 +2123,72 @@ function buildKeypad() {
     root.add(group);
     keypad.keys.push({ bump: bump, circleGeo: circleGeo, squareGeo: squareGeo, roundGeo: geo, id: spec.id, spec: spec, group: group, mesh: mesh, mat: mat, glyph: glyph, line: line, depth: 0, vel: 0, glow: 0, pressAt: -1, hover: 0 });
   }
+  buildPowerButton(root, circleGeo);
   keypad.root = root;
   keypad.center = root.position.clone();
   keypad.n = f.n.clone();
 }
 
+// Planned design only: round power button centred under the keypad backplate
+const POWER_BUTTON = { diameter: 9.0, height: 2.0, gap: 3.0 };
+
+function powerIconTexture() {
+  const c = document.createElement("canvas");
+  c.width = 128;
+  c.height = 128;
+  const g = c.getContext("2d");
+  g.strokeStyle = "#ffffff";
+  g.lineWidth = 12;
+  g.lineCap = "round";
+  // open ring with a gap at the top, plus the vertical bar
+  g.beginPath();
+  g.arc(64, 68, 34, -Math.PI * 0.32, Math.PI * 1.32, false);
+  g.stroke();
+  g.beginPath();
+  g.moveTo(64, 20);
+  g.lineTo(64, 62);
+  g.stroke();
+  const t = new THREE.CanvasTexture(c);
+  t.encoding = THREE.sRGBEncoding;
+  return t;
+}
+
+function buildPowerButton(root, circleGeo) {
+  const group = new THREE.Group();
+  const body = new THREE.Mesh(
+    circleGeo,
+    new THREE.MeshStandardMaterial({ color: KEY_PL_COLOR.clone(), roughness: 0.55, metalness: 0.02 })
+  );
+  group.add(body);
+  const icon = new THREE.Mesh(
+    new THREE.PlaneGeometry(1, 1),
+    new THREE.MeshBasicMaterial({ map: powerIconTexture(), transparent: true, color: new THREE.Color(0x7fd1b9), depthWrite: false })
+  );
+  group.add(icon);
+  root.add(group);
+  keypad.power = { group: group, body: body, icon: icon };
+}
+
+function updatePowerButton() {
+  const p = keypad.power;
+  if (!p) {
+    return;
+  }
+  const d = POWER_BUTTON.diameter;
+  const h = POWER_BUTTON.height;
+  // just under the plate's bottom edge, on the same centre line
+  const u = -(KEYPAD.plateU / 2 + POWER_BUTTON.gap + d / 2);
+  p.group.visible = morph > 0.02;
+  p.group.position.set(0, u * MM, -1.5 * MM);
+  p.group.scale.setScalar(Math.max(morph, 0.001));
+  p.body.scale.set(d * MM, d * MM, (h + 1.5) * MM);
+  p.icon.scale.set(d * 0.6 * MM, d * 0.6 * MM, 1);
+  p.icon.position.z = (h + 1.5 + 0.3) * MM;
+}
+
 const keyMeshes = [];
 function updateKeypad(now, dt) {
+  updatePowerButton();
   // plate is built tall enough for the planned layout; shrink it back for the stock one
   if (keypad.plate) {
     keypad.plate.scale.y = lerp(30 / 34, 1, morph);
