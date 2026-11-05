@@ -1958,10 +1958,10 @@ const KEY_SPECS = [
   { id: "left", glyph: "◀", cur: [-6.6, 0, 4.2, 6.6, 1.0], pl: [-10.2, 0, 7.2, 7.2, 1.6] },
   { id: "right", glyph: "▶", cur: [6.6, 0, 4.2, 6.6, 1.0], pl: [10.2, 0, 7.2, 7.2, 1.6] },
   { id: "ok", glyph: "OK", cur: [0, 0, 6.2, 6.2, 1.1], pl: [0, 0, 7.2, 7.2, 1.6] },
-  { id: "softL", glyph: "", label: "BACK", cur: [-14.5, 9.5, 6.0, 3.4, 0.9], pl: [-21.5, -5.2, 10.5, 8.0, 1.5] },
-  { id: "softR", glyph: "", label: "HOME", cur: [14.5, 9.5, 6.0, 3.4, 0.9], pl: [-21.5, 5.2, 10.5, 8.0, 1.5] },
-  { id: "menu", glyph: "", label: "MENU", cur: [21.5, 5.2, 0, 0, 0], pl: [21.5, 5.2, 10.5, 8.0, 1.5] },
-  { id: "feed", glyph: "", label: "FEED", cur: [21.5, -5.2, 0, 0, 0], pl: [21.5, -5.2, 10.5, 8.0, 1.5] }
+  { id: "softL", glyph: "", label: "BACK", cur: [-14.5, 9.5, 6.0, 3.4, 0.9], pl: [-21.5, -5.2, 9.0, 9.0, 1.5] },
+  { id: "softR", glyph: "", label: "HOME", cur: [14.5, 9.5, 6.0, 3.4, 0.9], pl: [-21.5, 5.2, 9.0, 9.0, 1.5] },
+  { id: "menu", glyph: "", label: "MENU", cur: [21.5, 5.2, 0, 0, 0], pl: [21.5, 5.2, 9.0, 9.0, 1.5] },
+  { id: "feed", glyph: "", label: "FEED", cur: [21.5, -5.2, 0, 0, 0], pl: [21.5, -5.2, 9.0, 9.0, 1.5] }
 ];
 const keypad = { root: null, keys: [], center: null, n: null };
 
@@ -1989,9 +1989,9 @@ function labelTexture(text) {
   g.textAlign = "center";
   g.textBaseline = "middle";
   // shrink the font until the word fits well inside the key
-  let fontSize = 56;
+  let fontSize = 84;
   g.font = "700 " + fontSize + "px " + FONT;
-  while (g.measureText(text).width > 170 && fontSize > 20) {
+  while (g.measureText(text).width > 220 && fontSize > 20) {
     fontSize -= 2;
     g.font = "700 " + fontSize + "px " + FONT;
   }
@@ -2057,6 +2057,7 @@ function buildKeypad() {
 
   const geo = roundedKeyGeometry(0.3);
   const squareGeo = roundedKeyGeometry(0.12);
+  const circleGeo = roundedKeyGeometry(0.5);
   for (const spec of KEY_SPECS) {
     const group = new THREE.Group();
     const mat = new THREE.MeshStandardMaterial({ color: KEY_CUR_COLOR.clone(), roughness: 0.55, metalness: 0.02, emissive: 0x000000 });
@@ -2092,7 +2093,7 @@ function buildKeypad() {
       group.add(glyph);
     }
     root.add(group);
-    keypad.keys.push({ squareGeo: squareGeo, roundGeo: geo, id: spec.id, spec: spec, group: group, mesh: mesh, mat: mat, glyph: glyph, line: line, depth: 0, vel: 0, glow: 0, pressAt: -1, hover: 0 });
+    keypad.keys.push({ circleGeo: circleGeo, squareGeo: squareGeo, roundGeo: geo, id: spec.id, spec: spec, group: group, mesh: mesh, mat: mat, glyph: glyph, line: line, depth: 0, vel: 0, glow: 0, pressAt: -1, hover: 0 });
   }
   keypad.root = root;
   keypad.center = root.position.clone();
@@ -2136,7 +2137,14 @@ function updateKeypad(now, dt) {
     k.group.position.set(r * MM, u * MM, (k.depth + k.hover * 0.25) * MM);
     // arrow and OK keys get sharper, more square corners in the planned design
     const wantSquare = morph > 0.5 && ["up", "down", "left", "right", "ok"].indexOf(k.id) >= 0;
-    k.mesh.geometry = wantSquare ? k.squareGeo : k.roundGeo;
+    const wantCircle = morph > 0.5 && ["softL", "softR", "menu", "feed"].indexOf(k.id) >= 0;
+    if (wantCircle) {
+      k.mesh.geometry = k.circleGeo;
+    } else if (wantSquare) {
+      k.mesh.geometry = k.squareGeo;
+    } else {
+      k.mesh.geometry = k.roundGeo;
+    }
     k.mesh.scale.set(w * MM, h * MM, hgt * MM);
     k.mesh.position.z = 0;
     const glyphSize = lerp(3.4, 5.4, morph);
@@ -2147,7 +2155,7 @@ function updateKeypad(now, dt) {
       const showLabel = morph > 0.5;
       k.glyph.visible = showLabel;
       k.line.visible = !showLabel;
-      k.glyph.scale.set(w * 0.62 * MM, w * 0.62 * 0.5 * MM, 1);
+      k.glyph.scale.set(w * 0.86 * MM, w * 0.86 * 0.5 * MM, 1);
       k.line.scale.set(w * 0.55 * MM, h * 0.55 * MM * 2.5, 1);
       k.line.position.z = (hgt * 1.12 + 0.12) * MM;
       k.line.material.color.copy(GLYPH_CUR_COLOR);
