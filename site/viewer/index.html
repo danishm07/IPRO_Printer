@@ -1845,7 +1845,7 @@ function pressKey(k) {
 // Display module (bezel + glass), hinged so it can tilt
 // =====================================================================
 // Plane fitted to the scanned display area (mm): y = A*x + B*z + C.
-const DISPLAY = { a: -0.3044, b: -0.1314, c: 81.9942, cx: 41, cz: 1.0, bezelW: 52, bezelH: 38, screenW: 44, screenH: 33.3, lift: 0.8, trayDepth: 3.5 };
+const DISPLAY = { a: -0.3044, b: -0.1314, c: 81.9942, cx: 41, cz: 1.0, bezelW: 52, bezelH: 38, screenW: 44, screenH: 33.3, lift: 0.8, trayDepth: 6, trayDepthCurrent: 2 };
 const display = { pivot: null, veil: null, mat: null, tilt: 0, center: null, n: null, frame: null };
 
 function buildDisplay() {
@@ -1859,10 +1859,11 @@ function buildDisplay() {
 
   // fixed tray under the module covers the opening when the screen tilts
   const tray = new THREE.Mesh(
-    new THREE.BoxGeometry((DISPLAY.bezelW - 4) * MM, (DISPLAY.bezelH - 2) * MM, DISPLAY.trayDepth * MM),
+    new THREE.BoxGeometry((DISPLAY.bezelW - 4) * MM, (DISPLAY.bezelH - 2) * MM, MM),
     new THREE.MeshStandardMaterial({ color: 0x0a0d0f, roughness: 0.9 })
   );
-  tray.position.z = (-DISPLAY.lift + DISPLAY.trayDepth / 2) * MM;
+  tray.scale.z = DISPLAY.trayDepthCurrent;
+  tray.position.z = (-DISPLAY.lift + DISPLAY.trayDepthCurrent / 2) * MM;
   root.add(tray);
   display.tray = tray;
   conceptMeshes.push(tray);
@@ -2221,17 +2222,21 @@ function updateDisplay(dt) {
   sun = approach(sun, Number(slSun.value) / 100, 6, dt);
   display.tilt = approach(display.tilt, tiltTarget, 6, dt);
   // in Planned the screen lies in exactly the same plane as the keypad backplate (same angle, same height)
-  const screenLift = lerp(DISPLAY.lift, KEYPAD.lift, morph);
+  // the screen sits on the front of the thick dark box, so its lift follows the box thickness
+  const trayNow = lerp(DISPLAY.trayDepthCurrent, DISPLAY.trayDepth, morph);
+  const plannedLift = Math.max(KEYPAD.lift, DISPLAY.trayDepth);
+  const screenLift = lerp(DISPLAY.lift, plannedLift, morph);
   const currentPos = display.baseCenter.clone().addScaledVector(display.n, screenLift * MM);
   const keypadNormal = new THREE.Vector3(0, 0, 1).applyQuaternion(keypad.root.quaternion);
   const planeY = KEYPAD.a * DISPLAY.cx + KEYPAD.b * DISPLAY.cz + KEYPAD.c;
   const plannedPos = new THREE.Vector3(DISPLAY.cx, planeY, DISPLAY.cz).multiplyScalar(MM);
-  plannedPos.addScaledVector(keypadNormal, KEYPAD.lift * MM);
+  plannedPos.addScaledVector(keypadNormal, plannedLift * MM);
   display.root.position.copy(currentPos).lerp(plannedPos, morph);
   display.root.quaternion.copy(display.baseQuat).slerp(keypad.root.quaternion, morph);
   display.pivot.rotation.x = THREE.MathUtils.degToRad(display.tilt);
   // the dark tray rests directly on the printer surface (its back face is at the surface)
-  display.tray.position.z = (-screenLift + DISPLAY.trayDepth / 2) * MM;
+  display.tray.scale.z = trayNow;
+  display.tray.position.z = (-screenLift + trayNow / 2) * MM;
   display.hinge.visible = morph > 0.5;
   display.basePlate.visible = morph > 0.5;
   const planned = morph > 0.5;
