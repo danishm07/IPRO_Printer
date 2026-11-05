@@ -2183,7 +2183,9 @@ function updateKeypad(now, dt) {
       const showLabel = morph > 0.5;
       k.glyph.visible = showLabel;
       k.line.visible = !showLabel;
-      k.glyph.scale.set(w * 0.92 * MM, w * 0.92 * 0.5 * MM, 1);
+      // height is stretched 30% so the letters read taller
+      const labelHeightStretch = 1.3;
+      k.glyph.scale.set(w * 0.92 * MM, w * 0.92 * 0.5 * labelHeightStretch * MM, 1);
       k.line.scale.set(w * 0.55 * MM, h * 0.55 * MM * 2.5, 1);
       k.line.position.z = (hgt * 1.12 + 0.12) * MM;
       k.line.material.color.copy(GLYPH_CUR_COLOR);
