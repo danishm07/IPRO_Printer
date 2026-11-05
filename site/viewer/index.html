@@ -1845,7 +1845,7 @@ function pressKey(k) {
 // Display module (bezel + glass), hinged so it can tilt
 // =====================================================================
 // Plane fitted to the scanned display area (mm): y = A*x + B*z + C.
-const DISPLAY = { a: -0.3044, b: -0.1314, c: 81.9942, cx: 41, cz: 1.0, bezelW: 48, bezelH: 38, screenW: 40, screenH: 33.3, lift: 0.8 };
+const DISPLAY = { a: -0.3044, b: -0.1314, c: 81.9942, cx: 41, cz: 1.0, bezelW: 52, bezelH: 38, screenW: 44, screenH: 33.3, lift: 0.8 };
 const display = { pivot: null, veil: null, mat: null, tilt: 0, center: null, n: null, frame: null };
 
 function buildDisplay() {
@@ -1859,10 +1859,10 @@ function buildDisplay() {
 
   // fixed tray under the module covers the opening when the screen tilts
   const tray = new THREE.Mesh(
-    new THREE.BoxGeometry((DISPLAY.bezelW + 4) * MM, (DISPLAY.bezelH + 4) * MM, 14 * MM),
+    new THREE.BoxGeometry(DISPLAY.bezelW * MM, (DISPLAY.bezelH + 2) * MM, 7 * MM),
     new THREE.MeshStandardMaterial({ color: 0x0a0d0f, roughness: 0.9 })
   );
-  tray.position.z = -7.1 * MM;
+  tray.position.z = -3.6 * MM;
   root.add(tray);
   conceptMeshes.push(tray);
 
