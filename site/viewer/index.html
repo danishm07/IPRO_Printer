@@ -1863,49 +1863,57 @@ function pressKey(k) {
 const DISPLAY = { a: -0.3044, b: -0.1314, c: 81.9942, cx: 41, cz: 1.0, bezelW: 48, bezelH: 38, screenW: 40, screenH: 33.3, lift: 4.2 };
 const display = { oldHinge: null, strongHinge: [], pivot: null, veil: null, mat: null, tilt: 0, center: null, n: null, frame: null };
 
-// Planned hinge: three-knuckle steel barrel hinge, full-length pin, bolted leaves
+// Planned hinge: twin side-yoke pivot. A steel axle runs through two bolted U-brackets
+// at the module ends, with hex nuts and a rubber guard strip along the bottom edge.
 function buildStrongHinge(root, pivot) {
-  const steel = new THREE.MeshStandardMaterial({ color: 0xaab2b8, roughness: 0.3, metalness: 0.9 });
-  const darkSteel = new THREE.MeshStandardMaterial({ color: 0x4b5258, roughness: 0.4, metalness: 0.85 });
+  const steel = new THREE.MeshStandardMaterial({ color: 0xc3c9ce, roughness: 0.28, metalness: 0.9 });
+  const darkSteel = new THREE.MeshStandardMaterial({ color: 0x3f464c, roughness: 0.4, metalness: 0.85 });
+  const rubber = new THREE.MeshStandardMaterial({ color: 0x15181a, roughness: 0.95, metalness: 0 });
   const parts = [];
   const halfH = DISPLAY.bezelH * MM / 2;
+  const halfW = DISPLAY.bezelW * MM / 2;
   const hingeZ = -0.6 * MM;
-  const knuckleLength = 13 * MM;
-  const knuckleCenters = [-16, 0, 16];
-  for (let i = 0; i < knuckleCenters.length; i++) {
-    const knuckle = new THREE.Mesh(new THREE.CylinderGeometry(1.9 * MM, 1.9 * MM, knuckleLength - 0.6 * MM, 24), steel);
-    knuckle.rotation.z = Math.PI / 2;
-    knuckle.position.set(knuckleCenters[i] * MM, 0, hingeZ);
-    pivot.add(knuckle);
-    parts.push(knuckle);
-    // outer knuckles belong to the fixed body, the middle one to the screen
-    const leaf = new THREE.Mesh(new THREE.BoxGeometry(knuckleLength, 5 * MM, 0.7 * MM), darkSteel);
-    if (i === 1) {
-      leaf.position.set(knuckleCenters[i] * MM, 2.8 * MM, hingeZ + 0.9 * MM);
-      pivot.add(leaf);
-    } else {
-      leaf.position.set(knuckleCenters[i] * MM, -halfH - 2.8 * MM, hingeZ + 0.9 * MM);
-      root.add(leaf);
+  const axle = new THREE.Mesh(new THREE.CylinderGeometry(1.4 * MM, 1.4 * MM, (DISPLAY.bezelW + 8) * MM, 20), steel);
+  axle.rotation.z = Math.PI / 2;
+  axle.position.set(0, 0, hingeZ);
+  pivot.add(axle);
+  parts.push(axle);
+  const guard = new THREE.Mesh(new THREE.BoxGeometry((DISPLAY.bezelW - 6) * MM, 2.4 * MM, 2.2 * MM), rubber);
+  guard.position.set(0, -0.2 * MM, hingeZ - 0.4 * MM);
+  pivot.add(guard);
+  parts.push(guard);
+  for (const side of [-1, 1]) {
+    const xOuter = side * (halfW + 2.2 * MM);
+    // fixed yoke: a block on the body with two cheeks that hold the axle
+    const base = new THREE.Mesh(new THREE.BoxGeometry(4.6 * MM, 4 * MM, 3.4 * MM), darkSteel);
+    base.position.set(xOuter, -halfH - 1.2 * MM, hingeZ - 0.4 * MM);
+    root.add(base);
+    parts.push(base);
+    for (const cheek of [-1, 1]) {
+      const plateCheek = new THREE.Mesh(new THREE.BoxGeometry(1.0 * MM, 6 * MM, 3.4 * MM), darkSteel);
+      plateCheek.position.set(xOuter + cheek * 1.8 * MM, -halfH + 0.8 * MM, hingeZ - 0.4 * MM);
+      root.add(plateCheek);
+      parts.push(plateCheek);
     }
-    parts.push(leaf);
-    for (const dx of [-4, 4]) {
-      const screw = new THREE.Mesh(new THREE.CylinderGeometry(0.7 * MM, 0.7 * MM, 0.5 * MM, 12), steel);
-      screw.rotation.x = Math.PI / 2;
-      screw.position.set(dx * MM, 0, 0.5 * MM);
-      leaf.add(screw);
+    // washer and hex nut on the outside of the yoke
+    const washer = new THREE.Mesh(new THREE.CylinderGeometry(2.0 * MM, 2.0 * MM, 0.4 * MM, 24), steel);
+    washer.rotation.z = Math.PI / 2;
+    washer.position.set(side * (halfW + 4.9 * MM), 0, hingeZ);
+    pivot.add(washer);
+    parts.push(washer);
+    const nut = new THREE.Mesh(new THREE.CylinderGeometry(1.7 * MM, 1.7 * MM, 1.2 * MM, 6), steel);
+    nut.rotation.z = Math.PI / 2;
+    nut.position.set(side * (halfW + 5.7 * MM), 0, hingeZ);
+    pivot.add(nut);
+    parts.push(nut);
+    // two mounting bolts through the base block
+    for (const dx of [-1, 1]) {
+      const bolt = new THREE.Mesh(new THREE.CylinderGeometry(0.6 * MM, 0.6 * MM, 0.5 * MM, 12), steel);
+      bolt.rotation.x = Math.PI / 2;
+      bolt.position.set(xOuter + dx * 1.2 * MM, -halfH - 1.2 * MM, hingeZ + 1.5 * MM);
+      root.add(bolt);
+      parts.push(bolt);
     }
-  }
-  const pin = new THREE.Mesh(new THREE.CylinderGeometry(0.8 * MM, 0.8 * MM, 50 * MM, 16), darkSteel);
-  pin.rotation.z = Math.PI / 2;
-  pin.position.set(0, 0, hingeZ);
-  pivot.add(pin);
-  parts.push(pin);
-  for (const sx of [-1, 1]) {
-    const cap = new THREE.Mesh(new THREE.CylinderGeometry(1.2 * MM, 1.2 * MM, 1.0 * MM, 16), steel);
-    cap.rotation.z = Math.PI / 2;
-    cap.position.set(sx * 25.3 * MM, 0, hingeZ);
-    pivot.add(cap);
-    parts.push(cap);
   }
   display.strongHinge = parts;
 }
@@ -1999,13 +2007,13 @@ const KEYPAD = { a: -0.6846, b: -0.0072, c: 104.2767, cx: 73, cz: 1.0, lift: 2.0
 const KEY_SPECS = [
   { id: "up", glyph: "▲", cur: [0, 6.6, 6.6, 4.2, 1.0], pl: [0, 8.6, 8.6, 6.6, 1.6] },
   { id: "down", glyph: "▼", cur: [0, -6.6, 6.6, 4.2, 1.0], pl: [0, -8.6, 8.6, 6.6, 1.6] },
-  { id: "left", glyph: "◀", cur: [-6.6, 0, 4.2, 6.6, 1.0], pl: [-12.0, 0, 7.0, 7.0, 1.6] },
-  { id: "right", glyph: "▶", cur: [6.6, 0, 4.2, 6.6, 1.0], pl: [12.0, 0, 7.0, 7.0, 1.6] },
+  { id: "left", glyph: "◀", cur: [-6.6, 0, 4.2, 6.6, 1.0], pl: [-11.0, 0, 7.0, 7.0, 1.6] },
+  { id: "right", glyph: "▶", cur: [6.6, 0, 4.2, 6.6, 1.0], pl: [11.0, 0, 7.0, 7.0, 1.6] },
   { id: "ok", glyph: "OK", cur: [0, 0, 6.2, 6.2, 1.1], pl: [0, 0, 8.6, 6.6, 1.6] },
-  { id: "softL", glyph: "", icon: "back", cur: [-14.5, 9.5, 6.0, 3.4, 0.9], pl: [-20.5, -7.2, 7.6, 7.6, 1.5] },
-  { id: "softR", glyph: "", icon: "save", cur: [14.5, 9.5, 6.0, 3.4, 0.9], pl: [20.5, -7.2, 7.6, 7.6, 1.5] },
-  { id: "home", glyph: "", icon: "home", planned: true, cur: [-19.0, 7.2, 0.01, 0.01, 0.01], pl: [-20.5, 7.2, 7.6, 7.6, 1.5] },
-  { id: "menu", glyph: "", icon: "menu", planned: true, cur: [19.0, 7.2, 0.01, 0.01, 0.01], pl: [20.5, 7.2, 7.6, 7.6, 1.5] }
+  { id: "softL", glyph: "", icon: "back", cur: [-14.5, 9.5, 6.0, 3.4, 0.9], pl: [-18.5, -7.2, 7.6, 7.6, 1.5] },
+  { id: "softR", glyph: "", icon: "save", cur: [14.5, 9.5, 6.0, 3.4, 0.9], pl: [18.5, -7.2, 7.6, 7.6, 1.5] },
+  { id: "home", glyph: "", icon: "home", planned: true, cur: [-19.0, 7.2, 0.01, 0.01, 0.01], pl: [-18.5, 7.2, 7.6, 7.6, 1.5] },
+  { id: "menu", glyph: "", icon: "menu", planned: true, cur: [19.0, 7.2, 0.01, 0.01, 0.01], pl: [18.5, 7.2, 7.6, 7.6, 1.5] }
 ];
 const keypad = { root: null, keys: [], center: null, n: null };
 
