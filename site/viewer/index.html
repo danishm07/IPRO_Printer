@@ -1930,6 +1930,41 @@ function buildStrongHinge(root, pivot) {
   display.strongHinge = parts;
 }
 
+// Planned lift tab: a small steel lip on the top edge of the screen with a thumb dimple,
+// so a fingertip can get under the screen and lift it.
+function buildLiftTab(module) {
+  const tabMaterial = new THREE.MeshStandardMaterial({ color: 0x8d949a, roughness: 0.45, metalness: 0.85 });
+  const dimpleMaterial = new THREE.MeshStandardMaterial({ color: 0x15191c, roughness: 0.8 });
+  const halfH = DISPLAY.bezelH * MM / 2;
+  const tabWidth = 16 * MM;
+  const tabOverhang = 3 * MM;
+
+  // lip that sticks out past the top edge
+  const lip = new THREE.Mesh(new THREE.BoxGeometry(tabWidth, tabOverhang, 1.4 * MM), tabMaterial);
+  lip.position.set(0, halfH + tabOverhang / 2 - 0.3 * MM, -0.5 * MM);
+  module.add(lip);
+
+  // rounded outer end of the lip
+  const roundEnd = new THREE.Mesh(new THREE.CylinderGeometry(0.7 * MM, 0.7 * MM, tabWidth, 16), tabMaterial);
+  roundEnd.rotation.z = Math.PI / 2;
+  roundEnd.position.set(0, halfH + tabOverhang - 0.3 * MM, -0.5 * MM);
+  module.add(roundEnd);
+
+  // thumb dimple on the front of the lip
+  const dimple = new THREE.Mesh(new THREE.CircleGeometry(1.1 * MM, 20), dimpleMaterial);
+  dimple.scale.set(3.2, 1, 1);
+  dimple.position.set(0, halfH + 1.2 * MM, 0.25 * MM);
+  module.add(dimple);
+
+  // small indent groove across the bezel just under the top edge
+  const groove = new THREE.Mesh(new THREE.PlaneGeometry(tabWidth * 1.4, 0.5 * MM), dimpleMaterial);
+  groove.position.set(0, halfH - 1.2 * MM, 0.25 * MM);
+  module.add(groove);
+
+  display.strongHinge.push(lip, roundEnd, dimple, groove);
+  display.dragMeshes.push(lip);
+}
+
 function buildDisplay() {
   // the scan's sideways lean is ignored so the screen sits level; the module is raised to compensate
   const f = planeFrame(new THREE.Vector3(-DISPLAY.a, 1, 0), new THREE.Vector3(0, 0, -1));
@@ -1996,6 +2031,7 @@ function buildDisplay() {
   display.pivot = pivot;
   display.module = module;
   display.dragMeshes = [bezel, glass];
+  buildLiftTab(module);
   display.oldHinge = hinge;
   display.center = center.clone().addScaledVector(f.n, DISPLAY.lift * MM);
   display.n = f.n.clone();
