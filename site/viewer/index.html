@@ -1994,14 +1994,14 @@ function labelTexture(text) {
   let tracking = 0;
   let totalWidth = 0;
   while (fontSize > 40) {
-    g.font = "700 " + fontSize + "px " + FONT;
-    tracking = -fontSize * 0.06;
+    g.font = "900 " + fontSize + "px " + FONT;
+    tracking = -fontSize * 0.03;
     totalWidth = 0;
     for (const letter of letters) {
       totalWidth += g.measureText(letter).width + tracking;
     }
     totalWidth -= tracking;
-    if (totalWidth <= 890) {
+    if (totalWidth <= 820) {
       break;
     }
     fontSize -= 4;
@@ -2009,8 +2009,13 @@ function labelTexture(text) {
   let penX = (1024 - totalWidth) / 2;
   // centre on the capital letters so the text sits in the middle of the key
   const baseline = 256 + fontSize * 0.36;
+  // a thin outline in the same colour makes the strokes heavier
+  g.strokeStyle = "#ffffff";
+  g.lineWidth = fontSize * 0.04;
+  g.lineJoin = "round";
   for (const letter of letters) {
     g.fillText(letter, penX, baseline);
+    g.strokeText(letter, penX, baseline);
     penX += g.measureText(letter).width + tracking;
   }
   const t = new THREE.CanvasTexture(c);
@@ -2022,6 +2027,11 @@ function labelTexture(text) {
 function roundedKeyGeometry(cornerRadius) {
   const s = new THREE.Shape();
   const r = cornerRadius;
+  if (r >= 0.5) {
+    // a true circle, smooth all the way round
+    s.absarc(0, 0, 0.5, 0, Math.PI * 2, false);
+    return new THREE.ExtrudeGeometry(s, { depth: 1, bevelEnabled: true, bevelThickness: 0.12, bevelSize: 0.0, bevelSegments: 3, curveSegments: 48 });
+  }
   s.moveTo(-0.5 + r, -0.5);
   s.lineTo(0.5 - r, -0.5);
   s.quadraticCurveTo(0.5, -0.5, 0.5, -0.5 + r);
@@ -2183,8 +2193,8 @@ function updateKeypad(now, dt) {
       const showLabel = morph > 0.5;
       k.glyph.visible = showLabel;
       k.line.visible = !showLabel;
-      // height is stretched 30% so the letters read taller
-      const labelHeightStretch = 1.3;
+      // height is stretched 12% so the letters read slightly taller
+      const labelHeightStretch = 1.12;
       k.glyph.scale.set(w * 0.92 * MM, w * 0.92 * 0.5 * labelHeightStretch * MM, 1);
       k.line.scale.set(w * 0.55 * MM, h * 0.55 * MM * 2.5, 1);
       k.line.position.z = (hgt * 1.12 + 0.12) * MM;
