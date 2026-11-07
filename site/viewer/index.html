@@ -1816,6 +1816,17 @@ function navCurrent(k) {
   }
 }
 
+// Planned-only keys: Home returns to the status screen, Menu opens the list
+function navPlannedExtra(k) {
+  const st = ui.pl;
+  if (k === "home" && st.screen !== "idle") {
+    ui.push(-1);
+    st.screen = "idle";
+  } else if (k === "menu" && st.screen === "idle") {
+    navPlanned("ok");
+  }
+}
+
 function pressKey(k) {
   const keyObj = keypad.keys.find(function (x) {
     return x.id === k;
@@ -1833,7 +1844,11 @@ function pressKey(k) {
     }, 110);
   }
   taskPress();
-  if (mode === "planned") {
+  if (k === "home" || k === "menu") {
+    if (mode === "planned") {
+      navPlannedExtra(k);
+    }
+  } else if (mode === "planned") {
     navPlanned(k);
   } else {
     navCurrent(k);
@@ -1846,7 +1861,54 @@ function pressKey(k) {
 // =====================================================================
 // Plane fitted to the scanned display area (mm): y = A*x + B*z + C.
 const DISPLAY = { a: -0.3044, b: -0.1314, c: 81.9942, cx: 41, cz: 1.0, bezelW: 48, bezelH: 38, screenW: 40, screenH: 33.3, lift: 0.8 };
-const display = { pivot: null, veil: null, mat: null, tilt: 0, center: null, n: null, frame: null };
+const display = { oldHinge: null, strongHinge: [], pivot: null, veil: null, mat: null, tilt: 0, center: null, n: null, frame: null };
+
+// Planned hinge: three-knuckle steel barrel hinge, full-length pin, bolted leaves
+function buildStrongHinge(root, pivot) {
+  const steel = new THREE.MeshStandardMaterial({ color: 0xaab2b8, roughness: 0.3, metalness: 0.9 });
+  const darkSteel = new THREE.MeshStandardMaterial({ color: 0x4b5258, roughness: 0.4, metalness: 0.85 });
+  const parts = [];
+  const halfH = DISPLAY.bezelH * MM / 2;
+  const hingeZ = -0.6 * MM;
+  const knuckleLength = 13 * MM;
+  const knuckleCenters = [-16, 0, 16];
+  for (let i = 0; i < knuckleCenters.length; i++) {
+    const knuckle = new THREE.Mesh(new THREE.CylinderGeometry(1.9 * MM, 1.9 * MM, knuckleLength - 0.6 * MM, 24), steel);
+    knuckle.rotation.z = Math.PI / 2;
+    knuckle.position.set(knuckleCenters[i] * MM, 0, hingeZ);
+    pivot.add(knuckle);
+    parts.push(knuckle);
+    // outer knuckles belong to the fixed body, the middle one to the screen
+    const leaf = new THREE.Mesh(new THREE.BoxGeometry(knuckleLength, 5 * MM, 0.7 * MM), darkSteel);
+    if (i === 1) {
+      leaf.position.set(knuckleCenters[i] * MM, 2.8 * MM, hingeZ + 0.9 * MM);
+      pivot.add(leaf);
+    } else {
+      leaf.position.set(knuckleCenters[i] * MM, -halfH - 2.8 * MM, hingeZ + 0.9 * MM);
+      root.add(leaf);
+    }
+    parts.push(leaf);
+    for (const dx of [-4, 4]) {
+      const screw = new THREE.Mesh(new THREE.CylinderGeometry(0.7 * MM, 0.7 * MM, 0.5 * MM, 12), steel);
+      screw.rotation.x = Math.PI / 2;
+      screw.position.set(dx * MM, 0, 0.5 * MM);
+      leaf.add(screw);
+    }
+  }
+  const pin = new THREE.Mesh(new THREE.CylinderGeometry(0.8 * MM, 0.8 * MM, 50 * MM, 16), darkSteel);
+  pin.rotation.z = Math.PI / 2;
+  pin.position.set(0, 0, hingeZ);
+  pivot.add(pin);
+  parts.push(pin);
+  for (const sx of [-1, 1]) {
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(1.2 * MM, 1.2 * MM, 1.0 * MM, 16), steel);
+    cap.rotation.z = Math.PI / 2;
+    cap.position.set(sx * 25.3 * MM, 0, hingeZ);
+    pivot.add(cap);
+    parts.push(cap);
+  }
+  display.strongHinge = parts;
+}
 
 function buildDisplay() {
   const f = planeFrame(new THREE.Vector3(-DISPLAY.a, 1, -DISPLAY.b), new THREE.Vector3(0, 0, -1));
@@ -1909,7 +1971,9 @@ function buildDisplay() {
   hinge.position.z = -1 * MM;
   pivot.add(hinge);
 
+  buildStrongHinge(root, pivot);
   display.pivot = pivot;
+  display.oldHinge = hinge;
   display.center = center.clone().addScaledVector(f.n, DISPLAY.lift * MM);
   display.n = f.n.clone();
   display.frame = f;
@@ -1932,13 +1996,15 @@ function buildDisplay() {
 const KEYPAD = { a: -0.6846, b: -0.0072, c: 104.2767, cx: 73, cz: 1.0, lift: 2.0, plateU: 30, plateR: 48 };
 // r = to the user's right (toward -z), u = toward the screen. Sizes in mm.
 const KEY_SPECS = [
-  { id: "up", glyph: "▲", cur: [0, 6.6, 6.6, 4.2, 1.0], pl: [0, 10.2, 8.4, 8.4, 1.6] },
-  { id: "down", glyph: "▼", cur: [0, -6.6, 6.6, 4.2, 1.0], pl: [0, -10.2, 8.4, 8.4, 1.6] },
-  { id: "left", glyph: "◀", cur: [-6.6, 0, 4.2, 6.6, 1.0], pl: [-10.2, 0, 8.4, 8.4, 1.6] },
-  { id: "right", glyph: "▶", cur: [6.6, 0, 4.2, 6.6, 1.0], pl: [10.2, 0, 8.4, 8.4, 1.6] },
-  { id: "ok", glyph: "OK", cur: [0, 0, 6.2, 6.2, 1.1], pl: [0, 0, 8.4, 8.4, 1.6] },
-  { id: "softL", glyph: "", cur: [-14.5, 9.5, 6.0, 3.4, 0.9], pl: [-18.0, 10.6, 8.0, 5.2, 1.4] },
-  { id: "softR", glyph: "", cur: [14.5, 9.5, 6.0, 3.4, 0.9], pl: [18.0, 10.6, 8.0, 5.2, 1.4] }
+  { id: "up", glyph: "▲", cur: [0, 6.6, 6.6, 4.2, 1.0], pl: [0, 8.6, 8.6, 6.6, 1.6] },
+  { id: "down", glyph: "▼", cur: [0, -6.6, 6.6, 4.2, 1.0], pl: [0, -8.6, 8.6, 6.6, 1.6] },
+  { id: "left", glyph: "◀", cur: [-6.6, 0, 4.2, 6.6, 1.0], pl: [-8.8, 0, 7.0, 7.0, 1.6] },
+  { id: "right", glyph: "▶", cur: [6.6, 0, 4.2, 6.6, 1.0], pl: [8.8, 0, 7.0, 7.0, 1.6] },
+  { id: "ok", glyph: "OK", cur: [0, 0, 6.2, 6.2, 1.1], pl: [0, 0, 8.6, 6.6, 1.6] },
+  { id: "softL", glyph: "", icon: "back", cur: [-14.5, 9.5, 6.0, 3.4, 0.9], pl: [-19.0, -7.2, 7.6, 7.6, 1.5] },
+  { id: "softR", glyph: "", icon: "save", cur: [14.5, 9.5, 6.0, 3.4, 0.9], pl: [19.0, -7.2, 7.6, 7.6, 1.5] },
+  { id: "home", glyph: "", icon: "home", planned: true, cur: [-19.0, 7.2, 0.01, 0.01, 0.01], pl: [-19.0, 7.2, 7.6, 7.6, 1.5] },
+  { id: "menu", glyph: "", icon: "menu", planned: true, cur: [19.0, 7.2, 0.01, 0.01, 0.01], pl: [19.0, 7.2, 7.6, 7.6, 1.5] }
 ];
 const keypad = { root: null, keys: [], center: null, n: null };
 
@@ -1952,6 +2018,59 @@ function glyphTexture(text) {
   g.textBaseline = "middle";
   g.font = (text === "OK" ? "800 64px " : "700 70px ") + FONT;
   g.fillText(text, 64, 70);
+  const t = new THREE.CanvasTexture(c);
+  t.encoding = THREE.sRGBEncoding;
+  return t;
+}
+
+function iconTexture(name) {
+  const c = document.createElement("canvas");
+  c.width = 128;
+  c.height = 128;
+  const g = c.getContext("2d");
+  g.strokeStyle = "#ffffff";
+  g.lineWidth = 9;
+  g.lineCap = "round";
+  g.lineJoin = "round";
+  g.beginPath();
+  if (name === "home") {
+    g.moveTo(24, 62);
+    g.lineTo(64, 28);
+    g.lineTo(104, 62);
+    g.moveTo(36, 56);
+    g.lineTo(36, 100);
+    g.lineTo(92, 100);
+    g.lineTo(92, 56);
+    g.moveTo(54, 100);
+    g.lineTo(54, 72);
+    g.lineTo(74, 72);
+    g.lineTo(74, 100);
+  } else if (name === "back") {
+    g.moveTo(42, 40);
+    g.lineTo(22, 60);
+    g.lineTo(42, 80);
+    g.moveTo(24, 60);
+    g.lineTo(76, 60);
+    g.quadraticCurveTo(104, 60, 104, 84);
+    g.quadraticCurveTo(104, 104, 78, 104);
+    g.lineTo(52, 104);
+  } else if (name === "menu") {
+    g.moveTo(26, 36);
+    g.lineTo(102, 36);
+    g.moveTo(26, 64);
+    g.lineTo(102, 64);
+    g.moveTo(26, 92);
+    g.lineTo(102, 92);
+  } else {
+    g.moveTo(64, 24);
+    g.lineTo(64, 78);
+    g.moveTo(40, 56);
+    g.lineTo(64, 80);
+    g.lineTo(88, 56);
+    g.moveTo(28, 102);
+    g.lineTo(100, 102);
+  }
+  g.stroke();
   const t = new THREE.CanvasTexture(c);
   t.encoding = THREE.sRGBEncoding;
   return t;
@@ -2032,8 +2151,17 @@ function buildKeypad() {
       );
       group.add(glyph);
     }
+    let icon = null;
+    if (spec.icon) {
+      icon = new THREE.Mesh(
+        new THREE.PlaneGeometry(1, 1),
+        new THREE.MeshBasicMaterial({ map: iconTexture(spec.icon), transparent: true, color: GLYPH_PL_COLOR.clone(), depthWrite: false })
+      );
+      icon.userData.keyId = spec.id;
+      group.add(icon);
+    }
     root.add(group);
-    keypad.keys.push({ id: spec.id, spec: spec, group: group, mesh: mesh, mat: mat, glyph: glyph, depth: 0, vel: 0, glow: 0, pressAt: -1, hover: 0 });
+    keypad.keys.push({ id: spec.id, spec: spec, group: group, mesh: mesh, mat: mat, glyph: glyph, icon: icon, depth: 0, vel: 0, glow: 0, pressAt: -1, hover: 0 });
   }
   keypad.root = root;
   keypad.center = root.position.clone();
@@ -2082,6 +2210,14 @@ function updateKeypad(now, dt) {
     k.mat.color.copy(KEY_CUR_COLOR).lerp(KEY_PL_COLOR, morph);
     k.mat.emissive.copy(KEY_GLOW).multiplyScalar(k.glow * 0.9 + k.hover * 0.12);
     k.glyph.material.color.copy(GLYPH_CUR_COLOR).lerp(GLYPH_PL_COLOR, morph);
+    k.group.visible = !k.spec.planned || morph > 0.02;
+    if (k.icon) {
+      const iconSize = Math.min(w, h) * 0.62;
+      k.icon.scale.set(iconSize * MM, iconSize * MM, 1);
+      k.icon.position.z = (hgt * 1.12 + 0.14) * MM;
+      k.icon.material.opacity = morph;
+      k.glyph.material.opacity = 0.8 * (1 - morph);
+    }
   }
 }
 
@@ -2198,6 +2334,11 @@ function updateDisplay(dt) {
   sun = approach(sun, Number(slSun.value) / 100, 6, dt);
   display.tilt = approach(display.tilt, tiltTarget, 6, dt);
   display.pivot.rotation.x = THREE.MathUtils.degToRad(display.tilt);
+  const showStrong = morph > 0.5;
+  display.oldHinge.visible = !showStrong;
+  for (const part of display.strongHinge) {
+    part.visible = showStrong;
+  }
   const planned = morph > 0.5;
   const adaptive = planned && cbAuto.checked;
   const tiltRelief = planned ? 1 - 0.45 * (display.tilt / 35) : 1;
