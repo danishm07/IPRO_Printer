@@ -1980,43 +1980,70 @@ function glyphTexture(text) {
   return t;
 }
 
-function labelTexture(text) {
+function labelTexture(name) {
+  // draws a white icon (BACK, HOME, MENU or FEED) on a square canvas
   const c = document.createElement("canvas");
-  c.width = 1024;
-  c.height = 512;
+  c.width = 256;
+  c.height = 256;
   const g = c.getContext("2d");
-  g.fillStyle = "#ffffff";
-  g.textAlign = "left";
-  g.textBaseline = "alphabetic";
-  // letters are drawn one by one so the gap between them can be tightened
-  const letters = text.split("");
-  let fontSize = 340;
-  let tracking = 0;
-  let totalWidth = 0;
-  while (fontSize > 40) {
-    g.font = "900 " + fontSize + "px " + FONT;
-    tracking = -fontSize * 0.03;
-    totalWidth = 0;
-    for (const letter of letters) {
-      totalWidth += g.measureText(letter).width + tracking;
-    }
-    totalWidth -= tracking;
-    if (totalWidth <= 820) {
-      break;
-    }
-    fontSize -= 4;
-  }
-  let penX = (1024 - totalWidth) / 2;
-  // centre on the capital letters so the text sits in the middle of the key
-  const baseline = 256 + fontSize * 0.36;
-  // a thin outline in the same colour makes the strokes heavier
   g.strokeStyle = "#ffffff";
-  g.lineWidth = fontSize * 0.04;
+  g.fillStyle = "#ffffff";
+  g.lineWidth = 22;
+  g.lineCap = "round";
   g.lineJoin = "round";
-  for (const letter of letters) {
-    g.fillText(letter, penX, baseline);
-    g.strokeText(letter, penX, baseline);
-    penX += g.measureText(letter).width + tracking;
+  if (name === "BACK") {
+    // arrow pointing backwards with a curved return tail
+    g.beginPath();
+    g.moveTo(104, 70);
+    g.lineTo(52, 118);
+    g.lineTo(104, 166);
+    g.stroke();
+    g.beginPath();
+    g.moveTo(58, 118);
+    g.lineTo(150, 118);
+    g.quadraticCurveTo(206, 118, 206, 164);
+    g.quadraticCurveTo(206, 206, 150, 206);
+    g.lineTo(110, 206);
+    g.stroke();
+  } else if (name === "HOME") {
+    // little house: roof, walls and door
+    g.beginPath();
+    g.moveTo(34, 124);
+    g.lineTo(128, 40);
+    g.lineTo(222, 124);
+    g.stroke();
+    g.beginPath();
+    g.moveTo(62, 112);
+    g.lineTo(62, 208);
+    g.lineTo(194, 208);
+    g.lineTo(194, 112);
+    g.stroke();
+    g.fillRect(112, 150, 32, 58);
+  } else if (name === "MENU") {
+    // three horizontal bars
+    g.lineWidth = 26;
+    for (let i = 0; i < 3; i++) {
+      const barY = 70 + i * 58;
+      g.beginPath();
+      g.moveTo(52, barY);
+      g.lineTo(204, barY);
+      g.stroke();
+    }
+  } else if (name === "FEED") {
+    // down arrow above a paper edge line
+    g.beginPath();
+    g.moveTo(128, 40);
+    g.lineTo(128, 160);
+    g.stroke();
+    g.beginPath();
+    g.moveTo(80, 116);
+    g.lineTo(128, 164);
+    g.lineTo(176, 116);
+    g.stroke();
+    g.beginPath();
+    g.moveTo(52, 212);
+    g.lineTo(204, 212);
+    g.stroke();
   }
   const t = new THREE.CanvasTexture(c);
   t.encoding = THREE.sRGBEncoding;
@@ -2096,7 +2123,7 @@ function buildKeypad() {
     let line = null;
     if (spec.label) {
       glyph = new THREE.Mesh(
-        new THREE.PlaneGeometry(1, 0.5),
+        new THREE.PlaneGeometry(1, 1),
         new THREE.MeshBasicMaterial({ map: labelTexture(spec.label), transparent: true, color: GLYPH_CUR_COLOR.clone(), depthWrite: false })
       );
       glyph.userData.keyId = spec.id;
@@ -2193,9 +2220,8 @@ function updateKeypad(now, dt) {
       const showLabel = morph > 0.5;
       k.glyph.visible = showLabel;
       k.line.visible = !showLabel;
-      // height is stretched 12% so the letters read slightly taller
-      const labelHeightStretch = 1.12;
-      k.glyph.scale.set(w * 0.92 * MM, w * 0.92 * 0.5 * labelHeightStretch * MM, 1);
+      // icon is centred on the round key, about 58% of its width
+      k.glyph.scale.set(w * 0.58 * MM, w * 0.58 * MM, 1);
       k.line.scale.set(w * 0.55 * MM, h * 0.55 * MM * 2.5, 1);
       k.line.position.z = (hgt * 1.12 + 0.12) * MM;
       k.line.material.color.copy(GLYPH_CUR_COLOR);
