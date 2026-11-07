@@ -1860,7 +1860,7 @@ function pressKey(k) {
 // Display module (bezel + glass), hinged so it can tilt
 // =====================================================================
 // Plane fitted to the scanned display area (mm): y = A*x + B*z + C.
-const DISPLAY = { a: -0.3044, b: -0.1314, c: 81.9942, cx: 41, cz: 1.0, bezelW: 48, bezelH: 38, screenW: 40, screenH: 33.3, lift: 0.8 };
+const DISPLAY = { a: -0.3044, b: -0.1314, c: 81.9942, cx: 41, cz: 1.0, bezelW: 48, bezelH: 38, screenW: 40, screenH: 33.3, lift: 4.2 };
 const display = { oldHinge: null, strongHinge: [], pivot: null, veil: null, mat: null, tilt: 0, center: null, n: null, frame: null };
 
 // Planned hinge: three-knuckle steel barrel hinge, full-length pin, bolted leaves
@@ -1911,7 +1911,8 @@ function buildStrongHinge(root, pivot) {
 }
 
 function buildDisplay() {
-  const f = planeFrame(new THREE.Vector3(-DISPLAY.a, 1, -DISPLAY.b), new THREE.Vector3(0, 0, -1));
+  // the scan's sideways lean is ignored so the screen sits level; the module is raised to compensate
+  const f = planeFrame(new THREE.Vector3(-DISPLAY.a, 1, 0), new THREE.Vector3(0, 0, -1));
   const cy = DISPLAY.a * DISPLAY.cx + DISPLAY.b * DISPLAY.cz + DISPLAY.c;
   const center = new THREE.Vector3(DISPLAY.cx, cy, DISPLAY.cz).multiplyScalar(MM);
   const root = new THREE.Group();
@@ -1921,10 +1922,10 @@ function buildDisplay() {
 
   // fixed tray under the module covers the opening when the screen tilts
   const tray = new THREE.Mesh(
-    new THREE.BoxGeometry((DISPLAY.bezelW + 4) * MM, (DISPLAY.bezelH + 4) * MM, 5 * MM),
+    new THREE.BoxGeometry((DISPLAY.bezelW + 4) * MM, (DISPLAY.bezelH + 4) * MM, 9 * MM),
     new THREE.MeshStandardMaterial({ color: 0x0a0d0f, roughness: 0.9 })
   );
-  tray.position.z = -2.6 * MM;
+  tray.position.z = -4.6 * MM;
   root.add(tray);
   conceptMeshes.push(tray);
 
@@ -1998,13 +1999,13 @@ const KEYPAD = { a: -0.6846, b: -0.0072, c: 104.2767, cx: 73, cz: 1.0, lift: 2.0
 const KEY_SPECS = [
   { id: "up", glyph: "▲", cur: [0, 6.6, 6.6, 4.2, 1.0], pl: [0, 8.6, 8.6, 6.6, 1.6] },
   { id: "down", glyph: "▼", cur: [0, -6.6, 6.6, 4.2, 1.0], pl: [0, -8.6, 8.6, 6.6, 1.6] },
-  { id: "left", glyph: "◀", cur: [-6.6, 0, 4.2, 6.6, 1.0], pl: [-8.8, 0, 7.0, 7.0, 1.6] },
-  { id: "right", glyph: "▶", cur: [6.6, 0, 4.2, 6.6, 1.0], pl: [8.8, 0, 7.0, 7.0, 1.6] },
+  { id: "left", glyph: "◀", cur: [-6.6, 0, 4.2, 6.6, 1.0], pl: [-12.0, 0, 7.0, 7.0, 1.6] },
+  { id: "right", glyph: "▶", cur: [6.6, 0, 4.2, 6.6, 1.0], pl: [12.0, 0, 7.0, 7.0, 1.6] },
   { id: "ok", glyph: "OK", cur: [0, 0, 6.2, 6.2, 1.1], pl: [0, 0, 8.6, 6.6, 1.6] },
-  { id: "softL", glyph: "", icon: "back", cur: [-14.5, 9.5, 6.0, 3.4, 0.9], pl: [-19.0, -7.2, 7.6, 7.6, 1.5] },
-  { id: "softR", glyph: "", icon: "save", cur: [14.5, 9.5, 6.0, 3.4, 0.9], pl: [19.0, -7.2, 7.6, 7.6, 1.5] },
-  { id: "home", glyph: "", icon: "home", planned: true, cur: [-19.0, 7.2, 0.01, 0.01, 0.01], pl: [-19.0, 7.2, 7.6, 7.6, 1.5] },
-  { id: "menu", glyph: "", icon: "menu", planned: true, cur: [19.0, 7.2, 0.01, 0.01, 0.01], pl: [19.0, 7.2, 7.6, 7.6, 1.5] }
+  { id: "softL", glyph: "", icon: "back", cur: [-14.5, 9.5, 6.0, 3.4, 0.9], pl: [-20.5, -7.2, 7.6, 7.6, 1.5] },
+  { id: "softR", glyph: "", icon: "save", cur: [14.5, 9.5, 6.0, 3.4, 0.9], pl: [20.5, -7.2, 7.6, 7.6, 1.5] },
+  { id: "home", glyph: "", icon: "home", planned: true, cur: [-19.0, 7.2, 0.01, 0.01, 0.01], pl: [-20.5, 7.2, 7.6, 7.6, 1.5] },
+  { id: "menu", glyph: "", icon: "menu", planned: true, cur: [19.0, 7.2, 0.01, 0.01, 0.01], pl: [20.5, 7.2, 7.6, 7.6, 1.5] }
 ];
 const keypad = { root: null, keys: [], center: null, n: null };
 
