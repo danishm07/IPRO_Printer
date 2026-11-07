@@ -1860,60 +1860,70 @@ function pressKey(k) {
 // Display module (bezel + glass), hinged so it can tilt
 // =====================================================================
 // Plane fitted to the scanned display area (mm): y = A*x + B*z + C.
-const DISPLAY = { a: -0.3044, b: -0.1314, c: 81.9942, cx: 41, cz: 1.0, bezelW: 48, bezelH: 38, screenW: 40, screenH: 33.3, lift: 4.2 };
+const DISPLAY = { a: -0.3044, b: -0.1314, c: 81.9942, cx: 41, cz: 1.0, bezelW: 54, bezelH: 38, screenW: 46, screenH: 33.3, lift: 4.2 };
 const display = { oldHinge: null, strongHinge: [], pivot: null, veil: null, mat: null, tilt: 0, center: null, n: null, frame: null };
 
-// Planned hinge: twin side-yoke pivot. A steel axle runs through two bolted U-brackets
-// at the module ends, with hex nuts and a rubber guard strip along the bottom edge.
+// Planned hinge: full-width knuckle (piano) hinge. Seven interlocking barrels share one
+// steel pin; alternate barrels belong to the fixed and moving leaves, spreading the load.
 function buildStrongHinge(root, pivot) {
   const steel = new THREE.MeshStandardMaterial({ color: 0xc3c9ce, roughness: 0.28, metalness: 0.9 });
   const darkSteel = new THREE.MeshStandardMaterial({ color: 0x3f464c, roughness: 0.4, metalness: 0.85 });
-  const rubber = new THREE.MeshStandardMaterial({ color: 0x15181a, roughness: 0.95, metalness: 0 });
+  const satin = new THREE.MeshStandardMaterial({ color: 0x8d949a, roughness: 0.45, metalness: 0.85 });
   const parts = [];
   const halfH = DISPLAY.bezelH * MM / 2;
-  const halfW = DISPLAY.bezelW * MM / 2;
   const hingeZ = -0.6 * MM;
-  const axle = new THREE.Mesh(new THREE.CylinderGeometry(1.4 * MM, 1.4 * MM, (DISPLAY.bezelW + 8) * MM, 20), steel);
-  axle.rotation.z = Math.PI / 2;
-  axle.position.set(0, 0, hingeZ);
-  pivot.add(axle);
-  parts.push(axle);
-  const guard = new THREE.Mesh(new THREE.BoxGeometry((DISPLAY.bezelW - 6) * MM, 2.4 * MM, 2.2 * MM), rubber);
-  guard.position.set(0, -0.2 * MM, hingeZ - 0.4 * MM);
-  pivot.add(guard);
-  parts.push(guard);
+  const hingeLength = (DISPLAY.bezelW - 2) * MM;
+  const knuckleCount = 7;
+  const knuckleLength = hingeLength / knuckleCount;
+  const barrelRadius = 1.7 * MM;
+
+  // continuous pin through all barrels
+  const pin = new THREE.Mesh(new THREE.CylinderGeometry(0.8 * MM, 0.8 * MM, hingeLength + 1.6 * MM, 16), steel);
+  pin.rotation.z = Math.PI / 2;
+  pin.position.set(0, 0, hingeZ);
+  pivot.add(pin);
+  parts.push(pin);
+
+  // leaves: fixed one on the body below the pivot, moving one on the module edge
+  const fixedLeaf = new THREE.Mesh(new THREE.BoxGeometry(hingeLength, 5 * MM, 0.5 * MM), satin);
+  fixedLeaf.position.set(0, -halfH - 1.4 * MM, hingeZ - 1.3 * MM);
+  root.add(fixedLeaf);
+  parts.push(fixedLeaf);
+  const movingLeaf = new THREE.Mesh(new THREE.BoxGeometry(hingeLength, 3.4 * MM, 0.5 * MM), satin);
+  movingLeaf.position.set(0, 1.8 * MM, 0.55 * MM);
+  pivot.add(movingLeaf);
+  parts.push(movingLeaf);
+
+  for (let index = 0; index < knuckleCount; index += 1) {
+    const isMoving = index % 2 === 0;
+    const barrelGeometry = new THREE.CylinderGeometry(barrelRadius, barrelRadius, knuckleLength - 0.15 * MM, 24);
+    const barrel = new THREE.Mesh(barrelGeometry, isMoving ? steel : darkSteel);
+    barrel.rotation.z = Math.PI / 2;
+    barrel.position.set(-hingeLength / 2 + knuckleLength * (index + 0.5), 0, hingeZ);
+    pivot.add(barrel);
+    parts.push(barrel);
+  }
+
+  // end caps and screws along both leaves
   for (const side of [-1, 1]) {
-    const xOuter = side * (halfW + 2.2 * MM);
-    // fixed yoke: a block on the body with two cheeks that hold the axle
-    const base = new THREE.Mesh(new THREE.BoxGeometry(4.6 * MM, 4 * MM, 3.4 * MM), darkSteel);
-    base.position.set(xOuter, -halfH - 1.2 * MM, hingeZ - 0.4 * MM);
-    root.add(base);
-    parts.push(base);
-    for (const cheek of [-1, 1]) {
-      const plateCheek = new THREE.Mesh(new THREE.BoxGeometry(1.0 * MM, 6 * MM, 3.4 * MM), darkSteel);
-      plateCheek.position.set(xOuter + cheek * 1.8 * MM, -halfH + 0.8 * MM, hingeZ - 0.4 * MM);
-      root.add(plateCheek);
-      parts.push(plateCheek);
-    }
-    // washer and hex nut on the outside of the yoke
-    const washer = new THREE.Mesh(new THREE.CylinderGeometry(2.0 * MM, 2.0 * MM, 0.4 * MM, 24), steel);
-    washer.rotation.z = Math.PI / 2;
-    washer.position.set(side * (halfW + 4.9 * MM), 0, hingeZ);
-    pivot.add(washer);
-    parts.push(washer);
-    const nut = new THREE.Mesh(new THREE.CylinderGeometry(1.7 * MM, 1.7 * MM, 1.2 * MM, 6), steel);
-    nut.rotation.z = Math.PI / 2;
-    nut.position.set(side * (halfW + 5.7 * MM), 0, hingeZ);
-    pivot.add(nut);
-    parts.push(nut);
-    // two mounting bolts through the base block
-    for (const dx of [-1, 1]) {
-      const bolt = new THREE.Mesh(new THREE.CylinderGeometry(0.6 * MM, 0.6 * MM, 0.5 * MM, 12), steel);
-      bolt.rotation.x = Math.PI / 2;
-      bolt.position.set(xOuter + dx * 1.2 * MM, -halfH - 1.2 * MM, hingeZ + 1.5 * MM);
-      root.add(bolt);
-      parts.push(bolt);
-    }
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(1.2 * MM, 1.2 * MM, 0.8 * MM, 16), darkSteel);
+    cap.rotation.z = Math.PI / 2;
+    cap.position.set(side * (hingeLength / 2 + 0.9 * MM), 0, hingeZ);
+    pivot.add(cap);
+    parts.push(cap);
+  }
+  for (let index = 0; index < 4; index += 1) {
+    const screwX = (index - 1.5) * hingeLength / 4;
+    const fixedScrew = new THREE.Mesh(new THREE.CylinderGeometry(0.55 * MM, 0.55 * MM, 0.3 * MM, 12), steel);
+    fixedScrew.rotation.x = Math.PI / 2;
+    fixedScrew.position.set(screwX, -halfH - 2.4 * MM, hingeZ - 1.65 * MM);
+    root.add(fixedScrew);
+    parts.push(fixedScrew);
+    const movingScrew = new THREE.Mesh(new THREE.CylinderGeometry(0.5 * MM, 0.5 * MM, 0.3 * MM, 12), steel);
+    movingScrew.rotation.x = Math.PI / 2;
+    movingScrew.position.set(screwX, 2.4 * MM, 0.9 * MM);
+    pivot.add(movingScrew);
+    parts.push(movingScrew);
   }
   display.strongHinge = parts;
 }
@@ -2002,7 +2012,7 @@ function buildDisplay() {
 // Keypad: modeled keys that morph between current and planned layouts
 // =====================================================================
 // Plane fitted to the scanned keypad area (mm): y = A*x + B*z + C.
-const KEYPAD = { a: -0.6846, b: -0.0072, c: 104.2767, cx: 73, cz: 1.0, lift: 2.0, plateU: 30, plateR: 48 };
+const KEYPAD = { a: -0.6846, b: -0.0072, c: 104.2767, cx: 73, cz: 1.0, lift: 2.0, plateU: 30, plateR: 56 };
 // r = to the user's right (toward -z), u = toward the screen. Sizes in mm.
 const KEY_SPECS = [
   { id: "up", glyph: "▲", cur: [0, 6.6, 6.6, 4.2, 1.0], pl: [0, 8.6, 8.6, 6.6, 1.6] },
