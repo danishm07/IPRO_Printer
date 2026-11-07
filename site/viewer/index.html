@@ -1860,7 +1860,7 @@ function pressKey(k) {
 // Display module (bezel + glass), hinged so it can tilt
 // =====================================================================
 // Plane fitted to the scanned display area (mm): y = A*x + B*z + C.
-const DISPLAY = { a: -0.3044, b: -0.1314, c: 81.9942, cx: 41, cz: 1.0, bezelW: 54, bezelH: 38, screenW: 46, screenH: 33.3, lift: 4.2 };
+const DISPLAY = { a: -0.3044, b: -0.1314, c: 81.9942, cx: 41, cz: 1.0, bezelW: 60, bezelH: 38, screenW: 52, screenH: 33.3, lift: 4.2 };
 const display = { oldHinge: null, strongHinge: [], pivot: null, veil: null, mat: null, tilt: 0, center: null, n: null, frame: null };
 
 // Planned hinge: full-width knuckle (piano) hinge. Seven interlocking barrels share one
@@ -2012,7 +2012,7 @@ function buildDisplay() {
 // Keypad: modeled keys that morph between current and planned layouts
 // =====================================================================
 // Plane fitted to the scanned keypad area (mm): y = A*x + B*z + C.
-const KEYPAD = { a: -0.6846, b: -0.0072, c: 104.2767, cx: 73, cz: 1.0, lift: 2.0, plateU: 30, plateR: 56 };
+const KEYPAD = { a: -0.6846, b: -0.0072, c: 104.2767, cx: 73, cz: 1.0, lift: 2.0, plateU: 30, plateR: 66 };
 // r = to the user's right (toward -z), u = toward the screen. Sizes in mm.
 const KEY_SPECS = [
   { id: "up", glyph: "▲", cur: [0, 6.6, 6.6, 4.2, 1.0], pl: [0, 8.6, 8.6, 6.6, 1.6] },
@@ -2020,10 +2020,10 @@ const KEY_SPECS = [
   { id: "left", glyph: "◀", cur: [-6.6, 0, 4.2, 6.6, 1.0], pl: [-11.0, 0, 7.0, 7.0, 1.6] },
   { id: "right", glyph: "▶", cur: [6.6, 0, 4.2, 6.6, 1.0], pl: [11.0, 0, 7.0, 7.0, 1.6] },
   { id: "ok", glyph: "OK", cur: [0, 0, 6.2, 6.2, 1.1], pl: [0, 0, 8.6, 6.6, 1.6] },
-  { id: "softL", glyph: "", icon: "back", cur: [-14.5, 9.5, 6.0, 3.4, 0.9], pl: [-18.5, -7.2, 7.6, 7.6, 1.5] },
-  { id: "softR", glyph: "", icon: "save", cur: [14.5, 9.5, 6.0, 3.4, 0.9], pl: [18.5, -7.2, 7.6, 7.6, 1.5] },
-  { id: "home", glyph: "", icon: "home", planned: true, cur: [-19.0, 7.2, 0.01, 0.01, 0.01], pl: [-18.5, 7.2, 7.6, 7.6, 1.5] },
-  { id: "menu", glyph: "", icon: "menu", planned: true, cur: [19.0, 7.2, 0.01, 0.01, 0.01], pl: [18.5, 7.2, 7.6, 7.6, 1.5] }
+  { id: "softL", glyph: "", icon: "back", cur: [-14.5, 9.5, 6.0, 3.4, 0.9], pl: [-24, -8.2, 7.6, 7.6, 1.5] },
+  { id: "softR", glyph: "", icon: "save", cur: [14.5, 9.5, 6.0, 3.4, 0.9], pl: [24, -8.2, 7.6, 7.6, 1.5] },
+  { id: "home", glyph: "", icon: "home", planned: true, cur: [-19.0, 7.2, 0.01, 0.01, 0.01], pl: [-24, 8.2, 7.6, 7.6, 1.5] },
+  { id: "menu", glyph: "", icon: "menu", planned: true, cur: [19.0, 7.2, 0.01, 0.01, 0.01], pl: [24, 8.2, 7.6, 7.6, 1.5] }
 ];
 const keypad = { root: null, keys: [], center: null, n: null };
 
