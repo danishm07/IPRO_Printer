@@ -104,6 +104,8 @@ button { font-family: inherit; }
 }
 .stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 .stage.over-key canvas { cursor: pointer; }
+.stage.over-screen canvas { cursor: grab; }
+.stage.drag-screen canvas { cursor: grabbing; }
 .stage-head {
   position: absolute;
   top: 0;
@@ -643,7 +645,7 @@ h1 {
       </div>
       <div class="ctl">
         <label for="sl-tilt">Screen tilt <span id="v-tilt">0°</span></label>
-        <input type="range" id="sl-tilt" min="0" max="35" value="0" disabled>
+        <input type="range" id="sl-tilt" min="0" max="60" value="0" disabled>
         <span class="sub" id="tilt-sub">Fixed in the current design.</span>
       </div>
       <label class="check"><input type="checkbox" id="cb-auto" checked disabled> Adaptive brightness</label>
@@ -1860,8 +1862,8 @@ function pressKey(k) {
 // Display module (bezel + glass), hinged so it can tilt
 // =====================================================================
 // Plane fitted to the scanned display area (mm): y = A*x + B*z + C.
-const DISPLAY = { a: -0.3044, b: -0.1314, c: 81.9942, cx: 41, cz: 1.0, bezelW: 60, bezelH: 38, screenW: 52, screenH: 33.3, lift: 4.2 };
-const display = { oldHinge: null, strongHinge: [], pivot: null, veil: null, mat: null, tilt: 0, center: null, n: null, frame: null };
+const DISPLAY = { a: -0.3044, b: -0.1314, c: 81.9942, cx: 39, cz: 1.0, bezelW: 60, bezelH: 42, screenW: 52, screenH: 37, lift: 4.2 };
+const display = { oldHinge: null, strongHinge: [], pivot: null, veil: null, mat: null, tilt: 0, module: null, dragMeshes: [], center: null, n: null, frame: null };
 
 // Planned hinge: full-width knuckle (piano) hinge. Seven interlocking barrels share one
 // steel pin; alternate barrels belong to the fixed and moving leaves, spreading the load.
@@ -1992,6 +1994,8 @@ function buildDisplay() {
 
   buildStrongHinge(root, pivot);
   display.pivot = pivot;
+  display.module = module;
+  display.dragMeshes = [bezel, glass];
   display.oldHinge = hinge;
   display.center = center.clone().addScaledVector(f.n, DISPLAY.lift * MM);
   display.n = f.n.clone();
@@ -2338,7 +2342,7 @@ function updateDisplayControls() {
   const planned = mode === "planned";
   slTilt.disabled = !planned;
   cbAuto.disabled = !planned;
-  document.getElementById("tilt-sub").textContent = planned ? "Hinged at the keypad edge." : "Fixed in the current design.";
+  document.getElementById("tilt-sub").textContent = planned ? "Friction hinge: drag the screen to set the angle." : "Fixed in the current design.";
   tiltTarget = planned ? Number(slTilt.value) : 0;
   document.getElementById("v-tilt").textContent = (planned ? slTilt.value : "0") + "°";
 }
@@ -2360,7 +2364,7 @@ function updateDisplay(dt) {
   }
   const planned = morph > 0.5;
   const adaptive = planned && cbAuto.checked;
-  const tiltRelief = planned ? 1 - 0.45 * (display.tilt / 35) : 1;
+  const tiltRelief = planned ? 1 - 0.45 * clamp(display.tilt / 35, 0, 1) : 1;
   const glare = sun * 0.82 * tiltRelief * (adaptive ? 0.32 : 1);
   display.veil.material.opacity = glare;
   display.mat.emissiveIntensity = 0.85 + (adaptive ? sun * 1.3 : 0);
@@ -2548,6 +2552,56 @@ function keyUnderPointer() {
   return hits.length ? hits[0].object.userData.keyId : null;
 }
 
+// Grab the screen (planned design) and drag it to change the viewing angle.
+let screenDrag = null;
+
+function screenUnderPointer() {
+  if (mode !== "planned" || morph < 0.5 || display.dragMeshes.length === 0) {
+    return false;
+  }
+  return raycaster.intersectObjects(display.dragMeshes, false).length > 0;
+}
+
+function screenTopOnCanvas(tiltDegrees) {
+  const savedRotation = display.pivot.rotation.x;
+  display.pivot.rotation.x = THREE.MathUtils.degToRad(tiltDegrees);
+  display.pivot.updateMatrixWorld(true);
+  const top = new THREE.Vector3(0, DISPLAY.bezelH * MM / 2, 0);
+  display.module.localToWorld(top);
+  display.pivot.rotation.x = savedRotation;
+  display.pivot.updateMatrixWorld(true);
+  top.project(camera);
+  const rect = renderer.domElement.getBoundingClientRect();
+  return new THREE.Vector2((top.x + 1) * rect.width / 2, (1 - top.y) * rect.height / 2);
+}
+
+function startScreenDrag(e) {
+  controls.enabled = false;
+  const base = display.tilt;
+  const here = screenTopOnCanvas(base);
+  const further = screenTopOnCanvas(base + 5);
+  const direction = further.clone().sub(here);
+  screenDrag = {
+    startX: e.clientX,
+    startY: e.clientY,
+    startTilt: base,
+    direction: direction,
+    lengthSq: Math.max(direction.lengthSq(), 1)
+  };
+  stage.classList.add("drag-screen");
+}
+
+function moveScreenDrag(e) {
+  const dx = e.clientX - screenDrag.startX;
+  const dy = e.clientY - screenDrag.startY;
+  const along = dx * screenDrag.direction.x + dy * screenDrag.direction.y;
+  const degrees = screenDrag.startTilt + 5 * along / screenDrag.lengthSq;
+  const clamped = clamp(Math.round(degrees), 0, Number(slTilt.max));
+  slTilt.value = String(clamped);
+  tiltTarget = clamped;
+  document.getElementById("v-tilt").textContent = clamped + "°";
+}
+
 renderer.domElement.addEventListener("pointermove", function (e) {
   lastPointer = e;
   pointerDirty = true;
@@ -2570,11 +2624,21 @@ renderer.domElement.addEventListener("pointerdown", function (e) {
       controls.enabled = false;
       downAt.key = k;
       pressKey(k);
+    } else if (screenUnderPointer()) {
+      startScreenDrag(e);
+      downAt.key = "screen";
     }
+  }
+});
+window.addEventListener("pointermove", function (e) {
+  if (screenDrag) {
+    moveScreenDrag(e);
   }
 });
 window.addEventListener("pointerup", function (e) {
   controls.enabled = true;
+  screenDrag = null;
+  stage.classList.remove("drag-screen");
   if (!downAt) {
     return;
   }
@@ -2600,6 +2664,7 @@ function pointerFrame() {
   castFrom(lastPointer);
   hoverKey = keyUnderPointer();
   stage.classList.toggle("over-key", Boolean(hoverKey));
+  stage.classList.toggle("over-screen", !hoverKey && !screenDrag && screenUnderPointer());
   if (concept === "specs" && !hoverKey) {
     const hits = raycaster.intersectObjects(meshes, false);
     setActive(hits.length ? partAt(hits[0].point) : null, false);
