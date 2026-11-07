@@ -659,7 +659,7 @@ h1 {
       <h2>Make the cover easier to operate.</h2>
       <div class="compare">
         <div class="cmp current"><span class="tag">Current</span><p>A rubber flap you pry open to reach the port.</p></div>
-        <div class="cmp planned"><span class="tag">Planned</span><p>A flip-up lid with a big thumb tab and a green charge light, one press to close.</p></div>
+        <div class="cmp planned"><span class="tag">Planned</span><p>A sliding cover with a grip and a secure close.</p></div>
       </div>
       <button class="big-btn" id="btn-cover" type="button">Open cover</button>
       <p class="keys-hint">Shortcut: <kbd>O</kbd></p>
@@ -2300,7 +2300,7 @@ function updateKeypad(now, dt) {
 // =====================================================================
 // Left side plane (mm): z = A*x + B*y + C, outward normal points to -z.
 const PORT = { a: 0.3, b: -0.0016, c: -81.22, cx: 60, cy: 27, lift: 4.2 };
-const port = { root: null, slider: null, chargeRing: null, flapPivot: null, open: false, anim: 0, center: null, n: null };
+const port = { root: null, slider: null, flapPivot: null, open: false, anim: 0, center: null, n: null };
 
 function buildPort() {
   const outward = new THREE.Vector3(PORT.a, -PORT.b, -1).normalize();
@@ -2326,34 +2326,19 @@ function buildPort() {
   tongue.position.set(-8 * MM, 0, 0.3 * MM);
   root.add(tongue);
 
-  // planned: top-hinged flip-up lid with a big thumb tab and a charge light
+  // planned: yellow slider with grip ridges
   const slider = new THREE.Group();
-  slider.position.set(-8 * MM, 5.75 * MM, 0);
   const yellow = new THREE.MeshStandardMaterial({ color: 0xf2c230, roughness: 0.45 });
-  const lidBody = new THREE.Mesh(new THREE.BoxGeometry(19 * MM, 11.5 * MM, 2.2 * MM), yellow);
-  lidBody.position.set(0, -5.75 * MM, 1.1 * MM);
-  slider.add(lidBody);
-  const tabMaterial = new THREE.MeshStandardMaterial({ color: 0xd9a91f, roughness: 0.5 });
-  const thumbTab = new THREE.Mesh(new THREE.BoxGeometry(9 * MM, 3.2 * MM, 1.6 * MM), tabMaterial);
-  thumbTab.position.set(0, -12.4 * MM, 0.8 * MM);
-  slider.add(thumbTab);
-  const gripMaterial = new THREE.MeshStandardMaterial({ color: 0x8a6a10, roughness: 0.6 });
-  const tabGrip = new THREE.Mesh(new THREE.BoxGeometry(6 * MM, 0.8 * MM, 0.6 * MM), gripMaterial);
-  tabGrip.position.set(0, -12.4 * MM, 1.8 * MM);
-  slider.add(tabGrip);
-  const hingeMaterial = new THREE.MeshStandardMaterial({ color: 0x111416, roughness: 0.6 });
-  const hingeBar = new THREE.Mesh(new THREE.BoxGeometry(19 * MM, 1.2 * MM, 1.6 * MM), hingeMaterial);
-  hingeBar.position.set(0, 0, 0.8 * MM);
-  slider.add(hingeBar);
+  const body = new THREE.Mesh(new THREE.BoxGeometry(17 * MM, 11.5 * MM, 2.2 * MM), yellow);
+  body.position.z = 1.1 * MM;
+  slider.add(body);
+  for (let i = -1; i <= 1; i++) {
+    const ridge = new THREE.Mesh(new THREE.BoxGeometry(0.9 * MM, 8 * MM, 0.8 * MM), new THREE.MeshStandardMaterial({ color: 0xd9a91f, roughness: 0.5 }));
+    ridge.position.set((3 + i * 2.2) * MM, 0, 2.5 * MM);
+    slider.add(ridge);
+  }
   root.add(slider);
-  conceptMeshes.push(lidBody);
-
-  // planned: charge light bar under the port, glows green when the lid is open
-  const lightMaterial = new THREE.MeshBasicMaterial({ color: 0x35d07f, transparent: true, opacity: 0 });
-  const chargeRing = new THREE.Mesh(new THREE.BoxGeometry(14 * MM, 1.0 * MM, 0.3 * MM), lightMaterial);
-  chargeRing.position.set(-8 * MM, -4.4 * MM, 0.4 * MM);
-  root.add(chargeRing);
-  port.chargeRing = chargeRing;
+  conceptMeshes.push(body);
 
   // current: rubber flap hinged on its left edge
   const flapPivot = new THREE.Group();
@@ -2378,8 +2363,7 @@ function updatePort(dt) {
   port.anim = approach(port.anim, port.open ? 1 : 0, 7, dt);
   const o = port.anim;
   // slider travels off the port; flap swings outward
-  port.slider.rotation.x = -o * 1.9;
-  port.chargeRing.material.opacity = o * smooth((morph - 0.45) / 0.55);
+  port.slider.position.x = lerp(-8, 9, o) * MM;
   port.flapPivot.rotation.y = -o * 1.35;
   const sPl = smooth((morph - 0.45) / 0.55);
   const sCur = smooth((0.55 - morph) / 0.55);
