@@ -1404,6 +1404,7 @@ function drawSoftBar(ctx, left, right) {
   ctx.fillStyle = PL.text;
   ctx.font = "700 26px " + FONT;
   ctx.textBaseline = "middle";
+  // The idle screen passes empty labels: the Menu and Feed text was removed from the UI
   ctx.textAlign = "left";
   ctx.fillText(left, 24, SH - 31);
   ctx.textAlign = "right";
@@ -1454,7 +1455,7 @@ function drawPlannedUI(ctx, now) {
       ctx.textAlign = "right";
       ctx.fillText(rows[i][1], SW - 30, y);
     }
-    drawSoftBar(ctx, "Menu", "Feed");
+    drawSoftBar(ctx, "", "");
   } else if (st.screen === "list") {
     ctx.fillStyle = PL.text;
     ctx.textAlign = "left";
