@@ -1936,7 +1936,7 @@ const KEY_SPECS = [
   { id: "down", glyph: "▼", cur: [0, -6.6, 6.6, 4.2, 1.0], pl: [0, -10.2, 8.4, 8.4, 1.6] },
   { id: "left", glyph: "◀", cur: [-6.6, 0, 4.2, 6.6, 1.0], pl: [-10.2, 0, 8.4, 8.4, 1.6] },
   { id: "right", glyph: "▶", cur: [6.6, 0, 4.2, 6.6, 1.0], pl: [10.2, 0, 8.4, 8.4, 1.6] },
-  { id: "ok", glyph: "OK", cur: [0, 0, 6.2, 6.2, 1.1], pl: [0, 0, 8.4, 8.4, 1.6] },
+  { id: "ok", glyph: "OK", cur: [0, 0, 6.2, 6.2, 1.1], pl: [0, 0, 7.4, 7.4, 2.4] },
   { id: "softL", glyph: "", cur: [-14.5, 9.5, 6.0, 3.4, 0.9], pl: [-18.0, 10.6, 8.0, 5.2, 1.4] },
   { id: "softR", glyph: "", cur: [14.5, 9.5, 6.0, 3.4, 0.9], pl: [18.0, 10.6, 8.0, 5.2, 1.4] }
 ];
@@ -1973,8 +1973,44 @@ function roundedKeyGeometry() {
   return g;
 }
 
+// Round raised OK button: a short dome, 7.4 mm across, built around the z axis
+const OK_RADIUS = 3.7;
+const OK_RING_RADIUS = 3.05;
+const OK_RING_COLOR = new THREE.Color(0x2fe36f);
+const DISH_SIZE = 6.8;
+const DISH_DEPTH = 0.55;
+
+function roundOkGeometry() {
+  const profile = [
+    new THREE.Vector2(0.001, 0),
+    new THREE.Vector2(OK_RADIUS, 0),
+    new THREE.Vector2(OK_RADIUS, 1.4),
+    new THREE.Vector2(3.3, 2.3),
+    new THREE.Vector2(2.6, 2.6),
+    new THREE.Vector2(0.001, 2.7)
+  ];
+  const lathe = new THREE.LatheGeometry(profile, 48);
+  lathe.rotateX(Math.PI / 2);
+  return lathe;
+}
+
+// A square dish (unit height = key height) whose centre sinks below its raised rim
+function concaveDishGeometry() {
+  const segments = 16;
+  const plane = new THREE.PlaneGeometry(DISH_SIZE, DISH_SIZE, segments, segments);
+  const positions = plane.attributes.position;
+  for (let i = 0; i < positions.count; i++) {
+    const px = positions.getX(i) / (DISH_SIZE / 2);
+    const py = positions.getY(i) / (DISH_SIZE / 2);
+    const radial = Math.min(1, Math.sqrt(px * px + py * py) / 1.0);
+    positions.setZ(i, -DISH_DEPTH * (1 - radial * radial));
+  }
+  plane.computeVertexNormals();
+  return plane;
+}
+
 const KEY_CUR_COLOR = new THREE.Color(0x181b1e);
-const KEY_PL_COLOR = new THREE.Color(0x262c30);
+const KEY_PL_COLOR = new THREE.Color(0x1d2225);
 const GLYPH_CUR_COLOR = new THREE.Color(0xaeb7bd);
 const GLYPH_PL_COLOR = new THREE.Color(0xeef3f0);
 const KEY_GLOW = new THREE.Color(0x3c7a6c);
@@ -2032,8 +2068,23 @@ function buildKeypad() {
       );
       group.add(glyph);
     }
+    // Planned-only parts, built in millimetres and faded in with morph
+    let plannedShape = null;
+    let ring = null;
+    if (spec.id === "ok") {
+      plannedShape = new THREE.Mesh(roundOkGeometry(), mat);
+      group.add(plannedShape);
+      ring = new THREE.Mesh(
+        new THREE.TorusGeometry(OK_RING_RADIUS, 0.17, 8, 48),
+        new THREE.MeshBasicMaterial({ color: OK_RING_COLOR })
+      );
+      group.add(ring);
+    } else if (spec.id === "up" || spec.id === "down" || spec.id === "left" || spec.id === "right") {
+      plannedShape = new THREE.Mesh(concaveDishGeometry(), mat);
+      group.add(plannedShape);
+    }
     root.add(group);
-    keypad.keys.push({ id: spec.id, spec: spec, group: group, mesh: mesh, mat: mat, glyph: glyph, depth: 0, vel: 0, glow: 0, pressAt: -1, hover: 0 });
+    keypad.keys.push({ id: spec.id, spec: spec, group: group, mesh: mesh, mat: mat, glyph: glyph, shape: plannedShape, ring: ring, depth: 0, vel: 0, glow: 0, pressAt: -1, hover: 0 });
   }
   keypad.root = root;
   keypad.center = root.position.clone();
@@ -2072,13 +2123,34 @@ function updateKeypad(now, dt) {
     k.group.position.set(r * MM, u * MM, (k.depth + k.hover * 0.25) * MM);
     k.mesh.scale.set(w * MM, h * MM, hgt * MM);
     k.mesh.position.z = 0;
-    const glyphSize = lerp(3.4, 5.0, morph);
+    const plannedGlyphSize = k.id === "ok" ? 3.8 : 4.4;
+    const glyphSize = lerp(3.4, plannedGlyphSize, morph);
     if (k.spec.glyph) {
       k.glyph.scale.set(glyphSize * MM, glyphSize * MM, 1);
     } else {
       k.glyph.scale.set(w * 0.55 * MM, h * 0.55 * MM * 2.5, 1);
     }
-    k.glyph.position.z = (hgt * 1.12 + 0.12) * MM;
+    let glyphZ = hgt * 1.12 + 0.12;
+    const isDirection = k.id === "up" || k.id === "down" || k.id === "left" || k.id === "right";
+    if (isDirection && morph > 0.5) {
+      // sit the arrow inside the dish
+      glyphZ = hgt * 1.12 - DISH_DEPTH + 0.1;
+    }
+    k.glyph.position.z = glyphZ * MM;
+    if (k.shape) {
+      const showPlanned = morph > 0.5;
+      k.shape.visible = showPlanned;
+      if (k.id === "ok") {
+        k.shape.scale.setScalar(MM);
+        k.mesh.visible = !showPlanned;
+        k.ring.visible = showPlanned;
+        k.ring.scale.setScalar(MM);
+        k.ring.position.z = 2.45 * MM;
+      } else {
+        k.shape.scale.setScalar(MM);
+        k.shape.position.z = (hgt * 1.12 + 0.02) * MM;
+      }
+    }
     k.mat.color.copy(KEY_CUR_COLOR).lerp(KEY_PL_COLOR, morph);
     k.mat.emissive.copy(KEY_GLOW).multiplyScalar(k.glow * 0.9 + k.hover * 0.12);
     k.glyph.material.color.copy(GLYPH_CUR_COLOR).lerp(GLYPH_PL_COLOR, morph);
