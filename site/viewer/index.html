@@ -1903,11 +1903,12 @@ const DISPLAY = { a: -0.3044, b: -0.1314, c: 81.9942, cx: 41, cz: 1.0, bezelW: 4
 const display = { pivot: null, veil: null, mat: null, tilt: 0, center: null, n: null, frame: null };
 
 function buildDisplay() {
-  // the module lies level along the printer's length (x); it only follows the scan's slight sideways slope
-  const f = planeFrame(new THREE.Vector3(0, 1, -DISPLAY.b), new THREE.Vector3(0, 0, -1));
-  // height of the scanned surface under the highest edge of the module
+  // the screen surface is perfectly flat: straight up, parallel to the printer's length (x) and width (z)
+  const f = planeFrame(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, -1));
+  // height of the scanned surface under the highest corner of the module
   const topEdgeX = DISPLAY.cx - DISPLAY.bezelH / 2;
-  const cy = DISPLAY.a * topEdgeX + DISPLAY.b * DISPLAY.cz + DISPLAY.c;
+  const highZ = DISPLAY.cz - DISPLAY.bezelW / 2;
+  const cy = DISPLAY.a * topEdgeX + DISPLAY.b * highZ + DISPLAY.c;
   const center = new THREE.Vector3(DISPLAY.cx, cy, DISPLAY.cz).multiplyScalar(MM);
   const root = new THREE.Group();
   root.quaternion.setFromRotationMatrix(f.basis);
@@ -1990,16 +1991,17 @@ function buildDisplay() {
 const KEYPAD = { a: -0.6846, b: -0.0072, c: 104.2767, cx: 73, cz: 1.0, lift: 2.0, plateU: 30, plateR: 48 };
 // r = to the user's right (toward -z), u = toward the screen. Sizes in mm.
 const KEY_SPECS = [
-  { id: "up", glyph: "▲", cur: [0, 6.6, 6.6, 4.2, 1.0], pl: [0, 10.2, 13, 9, 1.6] },
-  { id: "down", glyph: "▼", cur: [0, -6.6, 6.6, 4.2, 1.0], pl: [0, -10.2, 13, 9, 1.6] },
-  { id: "left", glyph: "◀", cur: [-6.6, 0, 4.2, 6.6, 1.0], pl: [-14, 0, 13, 9, 1.6] },
-  { id: "right", glyph: "▶", cur: [6.6, 0, 4.2, 6.6, 1.0], pl: [14, 0, 13, 9, 1.6] },
-  { id: "ok", glyph: "OK", cur: [0, 0, 6.2, 6.2, 1.1], pl: [0, 0, 13, 9, 1.6] },
-  { id: "softL", glyph: "", cur: [-14.5, 9.5, 6.0, 3.4, 0.9], pl: [-14, 10.2, 13, 9, 1.6] },
-  { id: "softR", glyph: "", cur: [14.5, 9.5, 6.0, 3.4, 0.9], pl: [14, 10.2, 13, 9, 1.6] }
+  { id: "up", glyph: "▲", cur: [0, 6.6, 6.6, 4.2, 1.0], pl: [0, 11.6, 17, 10.5, 1.6] },
+  { id: "down", glyph: "▼", cur: [0, -6.6, 6.6, 4.2, 1.0], pl: [0, -11.6, 17, 10.5, 1.6] },
+  { id: "left", glyph: "◀", cur: [-6.6, 0, 4.2, 6.6, 1.0], pl: [-18.5, 0, 17, 10.5, 1.6] },
+  { id: "right", glyph: "▶", cur: [6.6, 0, 4.2, 6.6, 1.0], pl: [18.5, 0, 17, 10.5, 1.6] },
+  { id: "ok", glyph: "OK", cur: [0, 0, 6.2, 6.2, 1.1], pl: [0, 0, 17, 10.5, 1.6] },
+  { id: "softL", glyph: "", cur: [-14.5, 9.5, 6.0, 3.4, 0.9], pl: [-18.5, 11.6, 17, 10.5, 1.6] },
+  { id: "softR", glyph: "", cur: [14.5, 9.5, 6.0, 3.4, 0.9], pl: [18.5, 11.6, 17, 10.5, 1.6] }
 ];
 // planned keypad plate grows a little so the bigger keys sit on it (width multiplier)
-const PLATE_PLANNED_WIDEN = 54 / 48;
+const PLATE_PLANNED_WIDEN = 60 / 48;
+const PLATE_PLANNED_TALLER = 36 / 30;
 const keypad = { plate: null, root: null, keys: [], center: null, n: null };
 
 function glyphTexture(text) {
@@ -2019,7 +2021,7 @@ function glyphTexture(text) {
 
 // Rounded trapezoid key: the long side faces outward, the short side faces the OK key.
 function trapezoidKeyGeometry(outward) {
-  const inset = 0.2;
+  const inset = 0.32;
   let corners = [[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]];
   if (outward === "up") {
     corners = [[-0.5 + inset, -0.5], [0.5 - inset, -0.5], [0.5, 0.5], [-0.5, 0.5]];
@@ -2180,8 +2182,9 @@ function updateKeypad(now, dt) {
       }
     }
     keypad.plate.scale.x = lerp(1, PLATE_PLANNED_WIDEN, morph);
+    keypad.plate.scale.y = lerp(1, PLATE_PLANNED_TALLER, morph);
     k.mesh.position.z = 0;
-    const glyphSize = lerp(3.4, 5.6, morph);
+    const glyphSize = lerp(3.4, 7, morph);
     if (k.spec.glyph) {
       k.glyph.scale.set(glyphSize * MM, glyphSize * MM, 1);
     } else {
