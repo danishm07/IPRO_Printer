@@ -1816,6 +1816,23 @@ function navCurrent(k) {
   }
 }
 
+// Home jumps to the top screen; Back goes up one level (planned design only)
+function navHomeBack(k) {
+  if (mode !== "planned") {
+    return;
+  }
+  const st = ui.pl;
+  if (st.screen === "idle") {
+    return;
+  }
+  ui.push(-1);
+  if (k === "home" || st.screen === "list") {
+    st.screen = "idle";
+  } else {
+    st.screen = "list";
+  }
+}
+
 function pressKey(k) {
   const keyObj = keypad.keys.find(function (x) {
     return x.id === k;
@@ -1833,7 +1850,9 @@ function pressKey(k) {
     }, 110);
   }
   taskPress();
-  if (mode === "planned") {
+  if (k === "home" || k === "back") {
+    navHomeBack(k);
+  } else if (mode === "planned") {
     navPlanned(k);
   } else {
     navCurrent(k);
@@ -1938,8 +1957,12 @@ const KEY_SPECS = [
   { id: "left", glyph: "◀", cur: [-6.6, 0, 4.2, 6.6, 1.0], pl: [-8.64, 0, 8.4, 8.4, 1.6] },
   { id: "right", glyph: "▶", cur: [6.6, 0, 4.2, 6.6, 1.0], pl: [8.64, 0, 8.4, 8.4, 1.6] },
   { id: "ok", glyph: "OK", cur: [0, 0, 6.2, 6.2, 1.1], pl: [0, 0, 7.4, 7.4, 2.4] },
-  { id: "softL", glyph: "", cur: [-14.5, 9.5, 6.0, 3.4, 0.9], pl: [-18.0, 10.6, 8.0, 5.2, 1.4] },
-  { id: "softR", glyph: "", cur: [14.5, 9.5, 6.0, 3.4, 0.9], pl: [18.0, 10.6, 8.0, 5.2, 1.4] }
+  // menu and feed keep the oval shape; in Planned they sit on the right like the reference
+  { id: "softL", glyph: "", icon: "menu", cur: [-14.5, 9.5, 6.0, 3.4, 0.9], pl: [18.0, 10.6, 8.0, 5.2, 1.4] },
+  { id: "softR", glyph: "", icon: "feed", cur: [14.5, 9.5, 6.0, 3.4, 0.9], pl: [18.0, -10.6, 8.0, 5.2, 1.4] },
+  // planned-only keys, same oval shape as menu and feed
+  { id: "home", glyph: "", icon: "home", plannedOnly: true, cur: [-18.0, 10.6, 8.0, 5.2, 1.4], pl: [-18.0, 10.6, 8.0, 5.2, 1.4] },
+  { id: "back", glyph: "", icon: "back", plannedOnly: true, cur: [-18.0, -10.6, 8.0, 5.2, 1.4], pl: [-18.0, -10.6, 8.0, 5.2, 1.4] }
 ];
 const keypad = { root: null, keys: [], center: null, n: null };
 
@@ -1953,6 +1976,61 @@ function glyphTexture(text) {
   g.textBaseline = "middle";
   g.font = (text === "OK" ? "800 64px " : "700 70px ") + FONT;
   g.fillText(text, 64, 70);
+  const t = new THREE.CanvasTexture(c);
+  t.encoding = THREE.sRGBEncoding;
+  return t;
+}
+
+// Line icons for the four small keys: home, back, menu, feed
+function iconTexture(name) {
+  const c = document.createElement("canvas");
+  c.width = 128;
+  c.height = 128;
+  const g = c.getContext("2d");
+  g.strokeStyle = "#ffffff";
+  g.lineCap = "round";
+  g.lineJoin = "round";
+  // circle outline around every icon, like the reference
+  g.beginPath();
+  g.arc(64, 64, 52, 0, Math.PI * 2);
+  g.lineWidth = 6;
+  g.stroke();
+  g.lineWidth = 9;
+  g.beginPath();
+  if (name === "home") {
+    g.moveTo(34, 68);
+    g.lineTo(64, 40);
+    g.lineTo(94, 68);
+    g.moveTo(42, 62);
+    g.lineTo(42, 90);
+    g.lineTo(86, 90);
+    g.lineTo(86, 62);
+  } else if (name === "back") {
+    g.moveTo(46, 44);
+    g.lineTo(34, 56);
+    g.lineTo(46, 68);
+    g.moveTo(36, 56);
+    g.lineTo(70, 56);
+    g.quadraticCurveTo(94, 56, 94, 74);
+    g.quadraticCurveTo(94, 90, 72, 90);
+    g.lineTo(54, 90);
+  } else if (name === "menu") {
+    g.moveTo(36, 46);
+    g.lineTo(92, 46);
+    g.moveTo(36, 64);
+    g.lineTo(92, 64);
+    g.moveTo(36, 82);
+    g.lineTo(92, 82);
+  } else if (name === "feed") {
+    g.moveTo(64, 34);
+    g.lineTo(64, 74);
+    g.moveTo(46, 58);
+    g.lineTo(64, 76);
+    g.lineTo(82, 58);
+    g.moveTo(36, 92);
+    g.lineTo(92, 92);
+  }
+  g.stroke();
   const t = new THREE.CanvasTexture(c);
   t.encoding = THREE.sRGBEncoding;
   return t;
@@ -2140,6 +2218,16 @@ function buildKeypad() {
       );
       group.add(glyph);
     }
+    let icon = null;
+    if (spec.icon) {
+      icon = new THREE.Mesh(
+        new THREE.PlaneGeometry(1, 1),
+        new THREE.MeshBasicMaterial({ map: iconTexture(spec.icon), transparent: true, color: GLYPH_PL_COLOR.clone(), depthWrite: false })
+      );
+      icon.userData.keyId = spec.id;
+      icon.visible = false;
+      group.add(icon);
+    }
     // Planned-only parts, built in millimetres and faded in with morph
     let plannedShape = null;
     let ring = null;
@@ -2157,7 +2245,7 @@ function buildKeypad() {
       group.add(plannedShape);
     }
     root.add(group);
-    keypad.keys.push({ id: spec.id, spec: spec, group: group, mesh: mesh, mat: mat, glyph: glyph, shape: plannedShape, ring: ring, depth: 0, vel: 0, glow: 0, pressAt: -1, hover: 0 });
+    keypad.keys.push({ id: spec.id, spec: spec, group: group, mesh: mesh, mat: mat, glyph: glyph, icon: icon, shape: plannedShape, ring: ring, depth: 0, vel: 0, glow: 0, pressAt: -1, hover: 0 });
   }
   keypad.root = root;
   keypad.center = root.position.clone();
@@ -2202,6 +2290,16 @@ function updateKeypad(now, dt) {
       k.glyph.scale.set(glyphSize * MM, glyphSize * MM, 1);
     } else {
       k.glyph.scale.set(w * 0.55 * MM, h * 0.55 * MM * 2.5, 1);
+    }
+    if (k.icon) {
+      const iconSize = Math.min(w, h) * 0.8;
+      k.icon.scale.set(iconSize * MM, iconSize * MM, 1);
+      k.icon.position.z = (hgt * 1.12 + 0.14) * MM;
+      k.icon.visible = morph > 0.5;
+      k.glyph.visible = morph <= 0.5;
+    }
+    if (k.spec.plannedOnly) {
+      k.group.visible = morph > 0.5;
     }
     let glyphZ = hgt * 1.12 + 0.12;
     k.glyph.position.z = glyphZ * MM;
@@ -2522,7 +2620,10 @@ function castFrom(e) {
 }
 
 function keyUnderPointer() {
-  const targets = keypad.keys.map(function (k) {
+  const visibleKeys = keypad.keys.filter(function (k) {
+    return k.group.visible;
+  });
+  const targets = visibleKeys.map(function (k) {
     if (k.shape && morph > 0.5) {
       return k.shape;
     }
