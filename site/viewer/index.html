@@ -1958,11 +1958,11 @@ const KEY_SPECS = [
   { id: "right", glyph: "▶", cur: [6.6, 0, 4.2, 6.6, 1.0], pl: [8.64, 0, 8.4, 8.4, 1.6] },
   { id: "ok", glyph: "OK", cur: [0, 0, 6.2, 6.2, 1.1], pl: [0, 0, 7.4, 7.4, 2.4] },
   // menu and feed keep the oval shape; in Planned they sit on the right like the reference
-  { id: "softL", glyph: "", icon: "menu", cur: [-14.5, 9.5, 6.0, 3.4, 0.9], pl: [18.0, 10.6, 8.0, 5.2, 1.4] },
-  { id: "softR", glyph: "", icon: "feed", cur: [14.5, 9.5, 6.0, 3.4, 0.9], pl: [18.0, -10.6, 8.0, 5.2, 1.4] },
+  { id: "softL", glyph: "", icon: "menu", cur: [-14.5, 9.5, 6.0, 3.4, 0.9], pl: [18.0, 10.6, 7.0, 7.0, 1.4] },
+  { id: "softR", glyph: "", icon: "feed", cur: [14.5, 9.5, 6.0, 3.4, 0.9], pl: [18.0, -10.6, 7.0, 7.0, 1.4] },
   // planned-only keys, same oval shape as menu and feed
-  { id: "home", glyph: "", icon: "home", plannedOnly: true, cur: [-18.0, 10.6, 8.0, 5.2, 1.4], pl: [-18.0, 10.6, 8.0, 5.2, 1.4] },
-  { id: "back", glyph: "", icon: "back", plannedOnly: true, cur: [-18.0, -10.6, 8.0, 5.2, 1.4], pl: [-18.0, -10.6, 8.0, 5.2, 1.4] }
+  { id: "home", glyph: "", icon: "home", plannedOnly: true, cur: [-18.0, 10.6, 7.0, 7.0, 1.4], pl: [-18.0, 10.6, 7.0, 7.0, 1.4] },
+  { id: "back", glyph: "", icon: "back", plannedOnly: true, cur: [-18.0, -10.6, 7.0, 7.0, 1.4], pl: [-18.0, -10.6, 7.0, 7.0, 1.4] }
 ];
 const keypad = { root: null, keys: [], center: null, n: null };
 
@@ -2067,6 +2067,22 @@ function roundOkGeometry() {
     new THREE.Vector2(0.001, 2.7)
   ];
   const lathe = new THREE.LatheGeometry(profile, 48);
+  lathe.rotateX(Math.PI / 2);
+  return lathe;
+}
+
+// Round small key (home, back, menu, feed): a flat disc with a softly
+// rounded top edge, 1 unit across and 1 unit tall before scaling
+function roundSmallKeyGeometry() {
+  const profile = [
+    new THREE.Vector2(0.001, 0),
+    new THREE.Vector2(0.5, 0),
+    new THREE.Vector2(0.5, 0.8),
+    new THREE.Vector2(0.44, 0.94),
+    new THREE.Vector2(0.3, 1.0),
+    new THREE.Vector2(0.001, 1.0)
+  ];
+  const lathe = new THREE.LatheGeometry(profile, 40);
   lathe.rotateX(Math.PI / 2);
   return lathe;
 }
@@ -2244,6 +2260,11 @@ function buildKeypad() {
       plannedShape.userData.keyId = spec.id;
       group.add(plannedShape);
     }
+    if (spec.icon) {
+      plannedShape = new THREE.Mesh(roundSmallKeyGeometry(), mat);
+      plannedShape.userData.keyId = spec.id;
+      group.add(plannedShape);
+    }
     root.add(group);
     keypad.keys.push({ id: spec.id, spec: spec, group: group, mesh: mesh, mat: mat, glyph: glyph, icon: icon, shape: plannedShape, ring: ring, depth: 0, vel: 0, glow: 0, pressAt: -1, hover: 0 });
   }
@@ -2292,7 +2313,7 @@ function updateKeypad(now, dt) {
       k.glyph.scale.set(w * 0.55 * MM, h * 0.55 * MM * 2.5, 1);
     }
     if (k.icon) {
-      const iconSize = Math.min(w, h) * 0.8;
+      const iconSize = Math.min(w, h) * 0.72;
       k.icon.scale.set(iconSize * MM, iconSize * MM, 1);
       k.icon.position.z = (hgt * 1.12 + 0.14) * MM;
       k.icon.visible = morph > 0.5;
@@ -2312,6 +2333,10 @@ function updateKeypad(now, dt) {
         k.ring.visible = showPlanned;
         k.ring.scale.setScalar(MM);
         k.ring.position.z = 2.45 * MM;
+      } else if (k.spec.icon) {
+        k.shape.scale.set(w * MM, h * MM, hgt * MM);
+        k.mesh.visible = !showPlanned;
+        k.shape.position.z = 0;
       } else {
         k.shape.scale.setScalar(MM);
         k.mesh.visible = !showPlanned;
