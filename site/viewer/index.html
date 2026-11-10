@@ -1282,7 +1282,9 @@ function drawCurrentUI(ctx, now) {
   ctx.fillStyle = "#ffffff";
   ctx.font = "700 28px " + FONT;
   let label = "";
-  if (st.screen === "home") {
+  if (st.screen === "idle") {
+    label = "ZQ630R PLUS";
+  } else if (st.screen === "home") {
     label = HOME_ITEMS[st.sel].toUpperCase();
   } else if (st.screen === "settings") {
     label = SETTINGS[st.sel2].label.toUpperCase();
@@ -1293,7 +1295,51 @@ function drawCurrentUI(ctx, now) {
   }
   ctx.fillText(label, SW / 2, 30);
 
-  if (st.screen === "home" || st.screen === "settings") {
+  if (st.screen === "idle") {
+    // idle status screen: ready banner, then battery, media, Wi-Fi and IP rows
+    ctx.fillStyle = "#2f9e57";
+    roundRect(ctx, 22, 76, SW - 44, 112, 14);
+    ctx.fill();
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.arc(82, 132, 34, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#2f9e57";
+    ctx.lineWidth = 8;
+    ctx.beginPath();
+    ctx.moveTo(66, 133);
+    ctx.lineTo(78, 146);
+    ctx.lineTo(100, 118);
+    ctx.stroke();
+    ctx.fillStyle = "#ffffff";
+    ctx.textAlign = "left";
+    ctx.font = "800 54px " + FONT;
+    ctx.fillText("READY", 136, 120);
+    ctx.font = "600 22px " + FONT;
+    ctx.fillText("Printer ready to print", 138, 160);
+    const idleRows = [
+      ["Battery", "82%", "#7ee08f"],
+      ["Media", setting("paper").options[setting("paper").value] + " · " + setting("length").value.toFixed(1) + " in", "#ffffff"],
+      ["Wi-Fi", "Connected", "#7ee08f"],
+      ["IP address", "192.168.1.42", "#ffffff"]
+    ];
+    ctx.font = "600 27px " + FONT;
+    for (let i = 0; i < idleRows.length; i++) {
+      const rowY = 228 + i * 46;
+      ctx.fillStyle = "#9db6ee";
+      ctx.textAlign = "left";
+      ctx.fillText(idleRows[i][0], 30, rowY);
+      ctx.fillStyle = idleRows[i][2];
+      ctx.textAlign = "right";
+      ctx.fillText(idleRows[i][1], SW - 30, rowY);
+    }
+    ctx.fillStyle = "rgba(0, 0, 0, 0.25)";
+    ctx.fillRect(0, SH - 54, SW, 54);
+    ctx.fillStyle = "#c9d6f5";
+    ctx.font = "600 22px " + FONT;
+    ctx.textAlign = "left";
+    ctx.fillText("OK: MENU", 18, SH - 27);
+  } else if (st.screen === "home" || st.screen === "settings") {
     const isHome = st.screen === "home";
     const cols = isHome ? 4 : 5;
     const count = isHome ? HOME_ITEMS.length : SETTINGS.length;
@@ -1663,7 +1709,7 @@ function renderTask() {
 }
 
 function resetUI() {
-  ui.cur = { screen: "home", sel: 0, sel2: 0, edit: 0, page: "" };
+  ui.cur = { screen: "idle", sel: 0, sel2: 0, edit: 0, page: "" };
   ui.pl = { screen: "idle", sel: 0, top: 0, edit: 0 };
   ui.selAnim = { pl: 0 };
   ui.hlBox = { home: { init: false }, settings: { init: false } };
@@ -1736,9 +1782,17 @@ function navPlanned(k) {
 
 function navCurrent(k) {
   const st = ui.cur;
-  if (st.screen === "home") {
+  if (st.screen === "idle") {
+    if (k === "ok" || k === "softL" || k === "softR") {
+      ui.push(1);
+      st.screen = "home";
+    }
+  } else if (st.screen === "home") {
     const cols = 4;
-    if (k === "left") {
+    if (k === "softL" || k === "softR") {
+      ui.push(-1);
+      st.screen = "idle";
+    } else if (k === "left") {
       st.sel = (st.sel + HOME_ITEMS.length - 1) % HOME_ITEMS.length;
     } else if (k === "right") {
       st.sel = (st.sel + 1) % HOME_ITEMS.length;
@@ -1849,8 +1903,11 @@ const DISPLAY = { a: -0.3044, b: -0.1314, c: 81.9942, cx: 41, cz: 1.0, bezelW: 4
 const display = { pivot: null, veil: null, mat: null, tilt: 0, center: null, n: null, frame: null };
 
 function buildDisplay() {
-  const f = planeFrame(new THREE.Vector3(-DISPLAY.a, 1, -DISPLAY.b), new THREE.Vector3(0, 0, -1));
-  const cy = DISPLAY.a * DISPLAY.cx + DISPLAY.b * DISPLAY.cz + DISPLAY.c;
+  // the module lies level along the printer's length (x); it only follows the scan's slight sideways slope
+  const f = planeFrame(new THREE.Vector3(0, 1, -DISPLAY.b), new THREE.Vector3(0, 0, -1));
+  // height of the scanned surface under the highest edge of the module
+  const topEdgeX = DISPLAY.cx - DISPLAY.bezelH / 2;
+  const cy = DISPLAY.a * topEdgeX + DISPLAY.b * DISPLAY.cz + DISPLAY.c;
   const center = new THREE.Vector3(DISPLAY.cx, cy, DISPLAY.cz).multiplyScalar(MM);
   const root = new THREE.Group();
   root.quaternion.setFromRotationMatrix(f.basis);
@@ -1859,10 +1916,11 @@ function buildDisplay() {
 
   // fixed tray under the module covers the opening when the screen tilts
   const tray = new THREE.Mesh(
-    new THREE.BoxGeometry((DISPLAY.bezelW + 4) * MM, (DISPLAY.bezelH + 4) * MM, 5 * MM),
+    new THREE.BoxGeometry((DISPLAY.bezelW + 4) * MM, (DISPLAY.bezelH + 4) * MM, 16 * MM),
     new THREE.MeshStandardMaterial({ color: 0x0a0d0f, roughness: 0.9 })
   );
-  tray.position.z = -2.6 * MM;
+  // deep enough to fill the gap between the level module and the sloped scan
+  tray.position.z = -8.1 * MM;
   root.add(tray);
   conceptMeshes.push(tray);
 
@@ -1921,7 +1979,7 @@ function buildDisplay() {
   });
   displayPart.center = display.center.clone();
   displayPart.dir = f.n.clone();
-  const faceDir = new THREE.Vector3(f.n.x, f.n.y, 0).normalize();
+  const faceDir = new THREE.Vector3(0.3, 1, 0).normalize();
   displayPart.camPos = display.center.clone().addScaledVector(faceDir, 0.15);
 }
 
@@ -1932,15 +1990,17 @@ function buildDisplay() {
 const KEYPAD = { a: -0.6846, b: -0.0072, c: 104.2767, cx: 73, cz: 1.0, lift: 2.0, plateU: 30, plateR: 48 };
 // r = to the user's right (toward -z), u = toward the screen. Sizes in mm.
 const KEY_SPECS = [
-  { id: "up", glyph: "▲", cur: [0, 6.6, 6.6, 4.2, 1.0], pl: [0, 10.2, 8.4, 8.4, 1.6] },
-  { id: "down", glyph: "▼", cur: [0, -6.6, 6.6, 4.2, 1.0], pl: [0, -10.2, 8.4, 8.4, 1.6] },
-  { id: "left", glyph: "◀", cur: [-6.6, 0, 4.2, 6.6, 1.0], pl: [-10.2, 0, 8.4, 8.4, 1.6] },
-  { id: "right", glyph: "▶", cur: [6.6, 0, 4.2, 6.6, 1.0], pl: [10.2, 0, 8.4, 8.4, 1.6] },
-  { id: "ok", glyph: "OK", cur: [0, 0, 6.2, 6.2, 1.1], pl: [0, 0, 8.4, 8.4, 1.6] },
-  { id: "softL", glyph: "", cur: [-14.5, 9.5, 6.0, 3.4, 0.9], pl: [-18.0, 10.6, 8.0, 5.2, 1.4] },
-  { id: "softR", glyph: "", cur: [14.5, 9.5, 6.0, 3.4, 0.9], pl: [18.0, 10.6, 8.0, 5.2, 1.4] }
+  { id: "up", glyph: "▲", cur: [0, 6.6, 6.6, 4.2, 1.0], pl: [0, 10.2, 13, 9, 1.6] },
+  { id: "down", glyph: "▼", cur: [0, -6.6, 6.6, 4.2, 1.0], pl: [0, -10.2, 13, 9, 1.6] },
+  { id: "left", glyph: "◀", cur: [-6.6, 0, 4.2, 6.6, 1.0], pl: [-14, 0, 13, 9, 1.6] },
+  { id: "right", glyph: "▶", cur: [6.6, 0, 4.2, 6.6, 1.0], pl: [14, 0, 13, 9, 1.6] },
+  { id: "ok", glyph: "OK", cur: [0, 0, 6.2, 6.2, 1.1], pl: [0, 0, 13, 9, 1.6] },
+  { id: "softL", glyph: "", cur: [-14.5, 9.5, 6.0, 3.4, 0.9], pl: [-14, 10.2, 13, 9, 1.6] },
+  { id: "softR", glyph: "", cur: [14.5, 9.5, 6.0, 3.4, 0.9], pl: [14, 10.2, 13, 9, 1.6] }
 ];
-const keypad = { root: null, keys: [], center: null, n: null };
+// planned keypad plate grows a little so the bigger keys sit on it (width multiplier)
+const PLATE_PLANNED_WIDEN = 54 / 48;
+const keypad = { plate: null, root: null, keys: [], center: null, n: null };
 
 function glyphTexture(text) {
   const c = document.createElement("canvas");
@@ -1955,6 +2015,43 @@ function glyphTexture(text) {
   const t = new THREE.CanvasTexture(c);
   t.encoding = THREE.sRGBEncoding;
   return t;
+}
+
+// Rounded trapezoid key: the long side faces outward, the short side faces the OK key.
+function trapezoidKeyGeometry(outward) {
+  const inset = 0.2;
+  let corners = [[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]];
+  if (outward === "up") {
+    corners = [[-0.5 + inset, -0.5], [0.5 - inset, -0.5], [0.5, 0.5], [-0.5, 0.5]];
+  } else if (outward === "down") {
+    corners = [[-0.5, -0.5], [0.5, -0.5], [0.5 - inset, 0.5], [-0.5 + inset, 0.5]];
+  } else if (outward === "left") {
+    corners = [[-0.5, -0.5], [0.5, -0.5 + inset * 1.4], [0.5, 0.5 - inset * 1.4], [-0.5, 0.5]];
+  } else if (outward === "right") {
+    corners = [[-0.5, -0.5 + inset * 1.4], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5 - inset * 1.4]];
+  }
+  const cut = 0.12;
+  const shape = new THREE.Shape();
+  const count = corners.length;
+  for (let i = 0; i < count; i++) {
+    const prev = corners[(i + count - 1) % count];
+    const here = corners[i];
+    const next = corners[(i + 1) % count];
+    const toPrev = new THREE.Vector2(prev[0] - here[0], prev[1] - here[1]).normalize();
+    const toNext = new THREE.Vector2(next[0] - here[0], next[1] - here[1]).normalize();
+    const startX = here[0] + toPrev.x * cut;
+    const startY = here[1] + toPrev.y * cut;
+    const endX = here[0] + toNext.x * cut;
+    const endY = here[1] + toNext.y * cut;
+    if (i === 0) {
+      shape.moveTo(startX, startY);
+    } else {
+      shape.lineTo(startX, startY);
+    }
+    shape.quadraticCurveTo(here[0], here[1], endX, endY);
+  }
+  shape.closePath();
+  return new THREE.ExtrudeGeometry(shape, { depth: 1, bevelEnabled: true, bevelThickness: 0.12, bevelSize: 0.04, bevelSegments: 3, curveSegments: 8 });
 }
 
 function roundedKeyGeometry() {
@@ -2008,6 +2105,7 @@ function buildKeypad() {
   );
   plate.position.z = -6 * MM;
   root.add(plate);
+  keypad.plate = plate;
   conceptMeshes.push(plate);
 
   const geo = roundedKeyGeometry();
@@ -2016,6 +2114,10 @@ function buildKeypad() {
     const mat = new THREE.MeshStandardMaterial({ color: KEY_CUR_COLOR.clone(), roughness: 0.55, metalness: 0.02, emissive: 0x000000 });
     const mesh = new THREE.Mesh(geo, mat);
     mesh.userData.keyId = spec.id;
+    if (spec.id === "up" || spec.id === "down" || spec.id === "left" || spec.id === "right") {
+      mesh.userData.rectGeo = geo;
+      mesh.userData.trapGeo = trapezoidKeyGeometry(spec.id);
+    }
     group.add(mesh);
     let glyph = null;
     if (spec.glyph) {
@@ -2071,8 +2173,15 @@ function updateKeypad(now, dt) {
     k.hover = approach(k.hover, hoverKey === k.id ? 1 : 0, 14, dt);
     k.group.position.set(r * MM, u * MM, (k.depth + k.hover * 0.25) * MM);
     k.mesh.scale.set(w * MM, h * MM, hgt * MM);
+    if (k.mesh.userData.trapGeo) {
+      const wanted = morph > 0.5 ? k.mesh.userData.trapGeo : k.mesh.userData.rectGeo;
+      if (k.mesh.geometry !== wanted) {
+        k.mesh.geometry = wanted;
+      }
+    }
+    keypad.plate.scale.x = lerp(1, PLATE_PLANNED_WIDEN, morph);
     k.mesh.position.z = 0;
-    const glyphSize = lerp(3.4, 5.0, morph);
+    const glyphSize = lerp(3.4, 5.6, morph);
     if (k.spec.glyph) {
       k.glyph.scale.set(glyphSize * MM, glyphSize * MM, 1);
     } else {
@@ -2183,7 +2292,7 @@ function updateDisplayControls() {
   const planned = mode === "planned";
   slTilt.disabled = !planned;
   cbAuto.disabled = !planned;
-  document.getElementById("tilt-sub").textContent = planned ? "Hinged at the keypad edge." : "Fixed in the current design.";
+  document.getElementById("tilt-sub").textContent = planned ? "Hinged at the keypad edge. Drag the green knob on the printer's side too." : "Fixed in the current design.";
   tiltTarget = planned ? Number(slTilt.value) : 0;
   document.getElementById("v-tilt").textContent = (planned ? slTilt.value : "0") + "°";
 }
@@ -2688,6 +2797,7 @@ function frame(now) {
     updateKeypad(now, dt);
     updatePort(dt);
     updateDisplay(dt);
+    updateTiltSlider();
     updateScreen(now);
     updateOcclusion(now);
     placeOverlays();
@@ -2696,6 +2806,160 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
+
+// =====================================================================
+// Side tilt slider (planned): slide the knob to tilt the screen upward
+// =====================================================================
+// Sits on the side opposite the port cover, beside the display. Positions in mm along the slider.
+const TILT_SLIDER = { cx: 41, cy: 40, lift: 4.2, travel: 14, maxTilt: 35 };
+const tiltSlider = { root: null, knob: null, plate: null, icons: [], dragging: false };
+
+function tiltIconTexture(angleDeg) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 192;
+  canvas.height = 128;
+  const g = canvas.getContext("2d");
+  g.lineCap = "round";
+  g.strokeStyle = "#eef3f0";
+  // printer body
+  g.lineWidth = 12;
+  g.beginPath();
+  g.moveTo(20, 108);
+  g.lineTo(172, 108);
+  g.stroke();
+  // screen slab hinged at the right end (keypad side)
+  const angle = THREE.MathUtils.degToRad(angleDeg);
+  const hingeX = 172;
+  const hingeY = 90;
+  const length = 140;
+  g.lineWidth = 16;
+  g.strokeStyle = "#3ccf7a";
+  g.beginPath();
+  g.moveTo(hingeX, hingeY);
+  g.lineTo(hingeX - length * Math.cos(angle), hingeY - length * Math.sin(angle));
+  g.stroke();
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.encoding = THREE.sRGBEncoding;
+  return texture;
+}
+
+function buildTiltSlider() {
+  const outward = new THREE.Vector3(PORT.a, 0, 1).normalize();
+  const f = planeFrame(outward, new THREE.Vector3(1, 0, 0));
+  // mirror of the port-side plane (z = A*x + C on the port side)
+  const surfaceZ = -PORT.a * TILT_SLIDER.cx - PORT.c;
+  const center = new THREE.Vector3(TILT_SLIDER.cx, TILT_SLIDER.cy, surfaceZ).multiplyScalar(MM);
+  const root = new THREE.Group();
+  root.quaternion.setFromRotationMatrix(f.basis);
+  root.position.copy(center).addScaledVector(f.n, TILT_SLIDER.lift * MM);
+  scene.add(root);
+
+  const plate = new THREE.Mesh(
+    new THREE.BoxGeometry(44 * MM, 18 * MM, 5 * MM),
+    new THREE.MeshStandardMaterial({ color: 0x1b2023, roughness: 0.7 })
+  );
+  plate.position.z = -2.5 * MM;
+  root.add(plate);
+  conceptMeshes.push(plate);
+
+  const groove = new THREE.Mesh(
+    new THREE.BoxGeometry(34 * MM, 2.6 * MM, 0.5 * MM),
+    new THREE.MeshStandardMaterial({ color: 0x050607, roughness: 0.9 })
+  );
+  groove.position.set(0, -4.5 * MM, 0.15 * MM);
+  root.add(groove);
+
+  const iconSpots = [-TILT_SLIDER.travel, TILT_SLIDER.travel];
+  const iconAngles = [0, TILT_SLIDER.maxTilt];
+  for (let i = 0; i < 2; i++) {
+    const icon = new THREE.Mesh(
+      new THREE.PlaneGeometry(10 * MM, 6.7 * MM),
+      new THREE.MeshBasicMaterial({ map: tiltIconTexture(iconAngles[i]), transparent: true, depthWrite: false })
+    );
+    icon.position.set(iconSpots[i] * MM, 2.8 * MM, 0.2 * MM);
+    icon.userData.tiltSnap = iconAngles[i];
+    root.add(icon);
+    tiltSlider.icons.push(icon);
+  }
+
+  const knob = new THREE.Group();
+  const knobBody = new THREE.Mesh(
+    new THREE.BoxGeometry(6 * MM, 5.4 * MM, 2.4 * MM),
+    new THREE.MeshStandardMaterial({ color: 0x3ccf7a, roughness: 0.45 })
+  );
+  knobBody.position.z = 1.2 * MM;
+  knobBody.userData.tiltKnob = true;
+  knob.add(knobBody);
+  for (let i = -1; i <= 1; i++) {
+    const ridge = new THREE.Mesh(
+      new THREE.BoxGeometry(0.6 * MM, 4 * MM, 0.6 * MM),
+      new THREE.MeshStandardMaterial({ color: 0x24965a, roughness: 0.5 })
+    );
+    ridge.position.set(i * 1.5 * MM, 0, 2.6 * MM);
+    knob.add(ridge);
+  }
+  knob.position.set(-TILT_SLIDER.travel * MM, -4.5 * MM, 0);
+  root.add(knob);
+
+  tiltSlider.root = root;
+  tiltSlider.knob = knob;
+  tiltSlider.plate = plate;
+  tiltSlider.knobBody = knobBody;
+  tiltSlider.normal = f.n.clone();
+}
+
+function setTiltFromSlider(e) {
+  castFrom(e);
+  const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(tiltSlider.normal, tiltSlider.root.position);
+  const hit = new THREE.Vector3();
+  if (!raycaster.ray.intersectPlane(plane, hit)) {
+    return;
+  }
+  const local = tiltSlider.root.worldToLocal(hit);
+  const along = clamp(local.x / MM, -TILT_SLIDER.travel, TILT_SLIDER.travel);
+  const fraction = (along + TILT_SLIDER.travel) / (2 * TILT_SLIDER.travel);
+  slTilt.value = String(Math.round(fraction * TILT_SLIDER.maxTilt));
+  updateDisplayControls();
+}
+
+renderer.domElement.addEventListener("pointerdown", function (e) {
+  if (!tiltSlider.root || morph < 0.5) {
+    return;
+  }
+  castFrom(e);
+  const targets = tiltSlider.icons.concat([tiltSlider.knobBody]);
+  const hits = raycaster.intersectObjects(targets, false);
+  if (!hits.length) {
+    return;
+  }
+  controls.enabled = false;
+  if (downAt) {
+    downAt.key = "tilt-slider";
+  }
+  const hitObject = hits[0].object;
+  if (hitObject.userData.tiltKnob) {
+    tiltSlider.dragging = true;
+  } else {
+    slTilt.value = String(hitObject.userData.tiltSnap);
+    updateDisplayControls();
+  }
+});
+window.addEventListener("pointermove", function (e) {
+  if (tiltSlider.dragging) {
+    setTiltFromSlider(e);
+  }
+});
+window.addEventListener("pointerup", function () {
+  tiltSlider.dragging = false;
+});
+
+function updateTiltSlider() {
+  const shown = smooth((morph - 0.45) / 0.55);
+  tiltSlider.root.visible = shown > 0.01;
+  tiltSlider.root.scale.setScalar(Math.max(0.001, shown));
+  const fraction = clamp(display.tilt / TILT_SLIDER.maxTilt, 0, 1);
+  tiltSlider.knob.position.x = lerp(-TILT_SLIDER.travel, TILT_SLIDER.travel, fraction) * MM;
+}
 
 // =====================================================================
 // Boot
@@ -2707,6 +2971,7 @@ loadModel("polished", function () {
   buildDisplay();
   buildKeypad();
   buildPort();
+  buildTiltSlider();
   refreshPickList();
   snapAnchors();
   ready = true;
