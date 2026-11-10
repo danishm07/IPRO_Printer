@@ -1932,10 +1932,10 @@ function buildDisplay() {
 const KEYPAD = { a: -0.6846, b: -0.0072, c: 104.2767, cx: 73, cz: 1.0, lift: 2.0, plateU: 30, plateR: 48 };
 // r = to the user's right (toward -z), u = toward the screen. Sizes in mm.
 const KEY_SPECS = [
-  { id: "up", glyph: "▲", cur: [0, 6.6, 6.6, 4.2, 1.0], pl: [0, 9.4, 8.4, 8.4, 1.6] },
-  { id: "down", glyph: "▼", cur: [0, -6.6, 6.6, 4.2, 1.0], pl: [0, -9.4, 8.4, 8.4, 1.6] },
-  { id: "left", glyph: "◀", cur: [-6.6, 0, 4.2, 6.6, 1.0], pl: [-9.4, 0, 8.4, 8.4, 1.6] },
-  { id: "right", glyph: "▶", cur: [6.6, 0, 4.2, 6.6, 1.0], pl: [9.4, 0, 8.4, 8.4, 1.6] },
+  { id: "up", glyph: "▲", cur: [0, 6.6, 6.6, 4.2, 1.0], pl: [0, 8.64, 8.4, 8.4, 1.6] },
+  { id: "down", glyph: "▼", cur: [0, -6.6, 6.6, 4.2, 1.0], pl: [0, -8.64, 8.4, 8.4, 1.6] },
+  { id: "left", glyph: "◀", cur: [-6.6, 0, 4.2, 6.6, 1.0], pl: [-8.64, 0, 8.4, 8.4, 1.6] },
+  { id: "right", glyph: "▶", cur: [6.6, 0, 4.2, 6.6, 1.0], pl: [8.64, 0, 8.4, 8.4, 1.6] },
   { id: "ok", glyph: "OK", cur: [0, 0, 6.2, 6.2, 1.1], pl: [0, 0, 7.4, 7.4, 2.4] },
   { id: "softL", glyph: "", cur: [-14.5, 9.5, 6.0, 3.4, 0.9], pl: [-18.0, 10.6, 8.0, 5.2, 1.4] },
   { id: "softR", glyph: "", cur: [14.5, 9.5, 6.0, 3.4, 0.9], pl: [18.0, 10.6, 8.0, 5.2, 1.4] }
@@ -1996,9 +1996,9 @@ function roundOkGeometry() {
 // and a raised rim. Built in mm around the key's own centre, then rotated to
 // face up, down, left or right.
 const WEDGE_INNER = 5.6;
-const WEDGE_OUTER = 13.2;
-const WEDGE_HALF_SPAN = 0.68;
-const WEDGE_CENTER_DISTANCE = 9.4;
+const WEDGE_OUTER = 11.68;
+const WEDGE_HALF_SPAN = 0.544;
+const WEDGE_CENTER_DISTANCE = 8.64;
 const WEDGE_ANGLES = { right: 0, up: Math.PI / 2, left: Math.PI, down: Math.PI * 1.5 };
 
 function wedgePoint(radialT, angularT, dip) {
@@ -2195,7 +2195,7 @@ function updateKeypad(now, dt) {
     k.group.position.set(r * MM, u * MM, (k.depth + k.hover * 0.25) * MM);
     k.mesh.scale.set(w * MM, h * MM, hgt * MM);
     k.mesh.position.z = 0;
-    const plannedGlyphSize = k.id === "ok" ? 3.8 : 5.0;
+    const plannedGlyphSize = k.id === "ok" ? 3.8 : 4.2;
     const glyphSize = lerp(3.4, plannedGlyphSize, morph);
     if (k.spec.glyph) {
       k.glyph.scale.set(glyphSize * MM, glyphSize * MM, 1);
