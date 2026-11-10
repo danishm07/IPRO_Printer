@@ -1452,7 +1452,6 @@ function drawPlannedUI(ctx, now) {
       ctx.textAlign = "right";
       ctx.fillText(rows[i][1], SW - 30, y);
     }
-    drawSoftBar(ctx, "Menu", "Feed");
   } else if (st.screen === "list") {
     ctx.fillStyle = PL.text;
     ctx.textAlign = "left";
@@ -1816,6 +1815,23 @@ function navCurrent(k) {
   }
 }
 
+// Home jumps to the top screen; Back goes up one level (planned design only)
+function navHomeBack(k) {
+  if (mode !== "planned") {
+    return;
+  }
+  const st = ui.pl;
+  if (st.screen === "idle") {
+    return;
+  }
+  ui.push(-1);
+  if (k === "home" || st.screen === "list") {
+    st.screen = "idle";
+  } else {
+    st.screen = "list";
+  }
+}
+
 function pressKey(k) {
   const keyObj = keypad.keys.find(function (x) {
     return x.id === k;
@@ -1833,7 +1849,9 @@ function pressKey(k) {
     }, 110);
   }
   taskPress();
-  if (mode === "planned") {
+  if (k === "home" || k === "back") {
+    navHomeBack(k);
+  } else if (mode === "planned") {
     navPlanned(k);
   } else {
     navCurrent(k);
@@ -1845,7 +1863,8 @@ function pressKey(k) {
 // Display module (bezel + glass), hinged so it can tilt
 // =====================================================================
 // Plane fitted to the scanned display area (mm): y = A*x + B*z + C.
-const DISPLAY = { a: -0.3044, b: -0.1314, c: 81.9942, cx: 41, cz: 1.0, bezelW: 48, bezelH: 38, screenW: 40, screenH: 33.3, lift: 0.8 };
+// The display shares the keypad backplate plane so the screen sits flat and level with it.
+const DISPLAY = { a: -0.6846, b: -0.0072, c: 104.2767, cx: 41, cz: 1.0, bezelW: 48, bezelH: 38, screenW: 40, screenH: 33.3, lift: 1.8 };
 const display = { pivot: null, veil: null, mat: null, tilt: 0, center: null, n: null, frame: null };
 
 function buildDisplay() {
@@ -1859,10 +1878,10 @@ function buildDisplay() {
 
   // fixed tray under the module covers the opening when the screen tilts
   const tray = new THREE.Mesh(
-    new THREE.BoxGeometry((DISPLAY.bezelW + 4) * MM, (DISPLAY.bezelH + 4) * MM, 5 * MM),
+    new THREE.BoxGeometry((DISPLAY.bezelW + 4) * MM, (DISPLAY.bezelH + 4) * MM, 20 * MM),
     new THREE.MeshStandardMaterial({ color: 0x0a0d0f, roughness: 0.9 })
   );
-  tray.position.z = -2.6 * MM;
+  tray.position.z = -10.1 * MM;
   root.add(tray);
   conceptMeshes.push(tray);
 
@@ -1881,6 +1900,29 @@ function buildDisplay() {
   );
   bezel.position.z = -bezelDepth / 2 + 0.2 * MM;
   module.add(bezel);
+
+  // grip notch: a small rounded tab on the top edge of the bezel, with a dark finger dimple
+  const notchShape = new THREE.Shape();
+  const notchHalfW = 6 * MM;
+  const notchHeight = 5.0 * MM;
+  notchShape.moveTo(-notchHalfW, 0);
+  notchShape.quadraticCurveTo(-notchHalfW, notchHeight, 0, notchHeight);
+  notchShape.quadraticCurveTo(notchHalfW, notchHeight, notchHalfW, 0);
+  notchShape.lineTo(-notchHalfW, 0);
+  const notch = new THREE.Mesh(
+    new THREE.ExtrudeGeometry(notchShape, { depth: bezelDepth, bevelEnabled: false, curveSegments: 16 }),
+    new THREE.MeshStandardMaterial({ color: 0x050607, roughness: 0.6, metalness: 0.05 })
+  );
+  notch.position.set(0, DISPLAY.bezelH * MM / 2 - 0.05 * MM, -bezelDepth + 0.2 * MM);
+  module.add(notch);
+  conceptMeshes.push(notch);
+
+  const dimple = new THREE.Mesh(
+    new THREE.CircleGeometry(1.6 * MM, 24),
+    new THREE.MeshBasicMaterial({ color: 0x1d2226 })
+  );
+  dimple.position.set(0, DISPLAY.bezelH * MM / 2 + 2.4 * MM, 0.25 * MM);
+  module.add(dimple);
 
   display.mat = new THREE.MeshStandardMaterial({
     map: screenTex,
@@ -1932,13 +1974,17 @@ function buildDisplay() {
 const KEYPAD = { a: -0.6846, b: -0.0072, c: 104.2767, cx: 73, cz: 1.0, lift: 2.0, plateU: 30, plateR: 48 };
 // r = to the user's right (toward -z), u = toward the screen. Sizes in mm.
 const KEY_SPECS = [
-  { id: "up", glyph: "▲", cur: [0, 6.6, 6.6, 4.2, 1.0], pl: [0, 10.2, 8.4, 8.4, 1.6] },
-  { id: "down", glyph: "▼", cur: [0, -6.6, 6.6, 4.2, 1.0], pl: [0, -10.2, 8.4, 8.4, 1.6] },
-  { id: "left", glyph: "◀", cur: [-6.6, 0, 4.2, 6.6, 1.0], pl: [-10.2, 0, 8.4, 8.4, 1.6] },
-  { id: "right", glyph: "▶", cur: [6.6, 0, 4.2, 6.6, 1.0], pl: [10.2, 0, 8.4, 8.4, 1.6] },
-  { id: "ok", glyph: "OK", cur: [0, 0, 6.2, 6.2, 1.1], pl: [0, 0, 8.4, 8.4, 1.6] },
-  { id: "softL", glyph: "", cur: [-14.5, 9.5, 6.0, 3.4, 0.9], pl: [-18.0, 10.6, 8.0, 5.2, 1.4] },
-  { id: "softR", glyph: "", cur: [14.5, 9.5, 6.0, 3.4, 0.9], pl: [18.0, 10.6, 8.0, 5.2, 1.4] }
+  { id: "up", glyph: "▲", cur: [0, 6.6, 6.6, 4.2, 1.0], pl: [0, 8.64, 8.4, 8.4, 1.6] },
+  { id: "down", glyph: "▼", cur: [0, -6.6, 6.6, 4.2, 1.0], pl: [0, -8.64, 8.4, 8.4, 1.6] },
+  { id: "left", glyph: "◀", cur: [-6.6, 0, 4.2, 6.6, 1.0], pl: [-8.64, 0, 8.4, 8.4, 1.6] },
+  { id: "right", glyph: "▶", cur: [6.6, 0, 4.2, 6.6, 1.0], pl: [8.64, 0, 8.4, 8.4, 1.6] },
+  { id: "ok", glyph: "OK", cur: [0, 0, 6.2, 6.2, 1.1], pl: [0, 0, 7.4, 7.4, 2.4] },
+  // menu and feed keep the oval shape; in Planned they sit on the right like the reference
+  { id: "softL", glyph: "", icon: "menu", cur: [-14.5, 9.5, 6.0, 3.4, 0.9], pl: [18.0, 10.6, 7.0, 7.0, 1.4] },
+  { id: "softR", glyph: "", icon: "feed", cur: [14.5, 9.5, 6.0, 3.4, 0.9], pl: [18.0, -10.6, 7.0, 7.0, 1.4] },
+  // planned-only keys, same oval shape as menu and feed
+  { id: "home", glyph: "", icon: "home", plannedOnly: true, cur: [-18.0, 10.6, 7.0, 7.0, 1.4], pl: [-18.0, 10.6, 7.0, 7.0, 1.4] },
+  { id: "back", glyph: "", icon: "back", plannedOnly: true, cur: [-18.0, -10.6, 7.0, 7.0, 1.4], pl: [-18.0, -10.6, 7.0, 7.0, 1.4] }
 ];
 const keypad = { root: null, keys: [], center: null, n: null };
 
@@ -1952,6 +1998,61 @@ function glyphTexture(text) {
   g.textBaseline = "middle";
   g.font = (text === "OK" ? "800 64px " : "700 70px ") + FONT;
   g.fillText(text, 64, 70);
+  const t = new THREE.CanvasTexture(c);
+  t.encoding = THREE.sRGBEncoding;
+  return t;
+}
+
+// Line icons for the four small keys: home, back, menu, feed
+function iconTexture(name) {
+  const c = document.createElement("canvas");
+  c.width = 128;
+  c.height = 128;
+  const g = c.getContext("2d");
+  g.strokeStyle = "#ffffff";
+  g.lineCap = "round";
+  g.lineJoin = "round";
+  // circle outline around every icon, like the reference
+  g.beginPath();
+  g.arc(64, 64, 52, 0, Math.PI * 2);
+  g.lineWidth = 6;
+  g.stroke();
+  g.lineWidth = 9;
+  g.beginPath();
+  if (name === "home") {
+    g.moveTo(34, 68);
+    g.lineTo(64, 40);
+    g.lineTo(94, 68);
+    g.moveTo(42, 62);
+    g.lineTo(42, 90);
+    g.lineTo(86, 90);
+    g.lineTo(86, 62);
+  } else if (name === "back") {
+    g.moveTo(46, 44);
+    g.lineTo(34, 56);
+    g.lineTo(46, 68);
+    g.moveTo(36, 56);
+    g.lineTo(70, 56);
+    g.quadraticCurveTo(94, 56, 94, 74);
+    g.quadraticCurveTo(94, 90, 72, 90);
+    g.lineTo(54, 90);
+  } else if (name === "menu") {
+    g.moveTo(36, 46);
+    g.lineTo(92, 46);
+    g.moveTo(36, 64);
+    g.lineTo(92, 64);
+    g.moveTo(36, 82);
+    g.lineTo(92, 82);
+  } else if (name === "feed") {
+    g.moveTo(64, 34);
+    g.lineTo(64, 74);
+    g.moveTo(46, 58);
+    g.lineTo(64, 76);
+    g.lineTo(82, 58);
+    g.moveTo(36, 92);
+    g.lineTo(92, 92);
+  }
+  g.stroke();
   const t = new THREE.CanvasTexture(c);
   t.encoding = THREE.sRGBEncoding;
   return t;
@@ -1973,8 +2074,131 @@ function roundedKeyGeometry() {
   return g;
 }
 
+// Round raised OK button: a short dome, 7.4 mm across, built around the z axis
+const OK_RADIUS = 3.7;
+const OK_RING_RADIUS = 3.05;
+const OK_RING_COLOR = new THREE.Color(0x2fe36f);
+
+function roundOkGeometry() {
+  const profile = [
+    new THREE.Vector2(0.001, 0),
+    new THREE.Vector2(OK_RADIUS, 0),
+    new THREE.Vector2(OK_RADIUS, 1.4),
+    new THREE.Vector2(3.3, 2.3),
+    new THREE.Vector2(2.6, 2.6),
+    new THREE.Vector2(0.001, 2.7)
+  ];
+  const lathe = new THREE.LatheGeometry(profile, 48);
+  lathe.rotateX(Math.PI / 2);
+  return lathe;
+}
+
+// Round small key (home, back, menu, feed): a flat disc with a softly
+// rounded top edge, 1 unit across and 1 unit tall before scaling
+function roundSmallKeyGeometry() {
+  const profile = [
+    new THREE.Vector2(0.001, 0),
+    new THREE.Vector2(0.5, 0),
+    new THREE.Vector2(0.5, 0.8),
+    new THREE.Vector2(0.44, 0.94),
+    new THREE.Vector2(0.3, 1.0),
+    new THREE.Vector2(0.001, 1.0)
+  ];
+  const lathe = new THREE.LatheGeometry(profile, 40);
+  lathe.rotateX(Math.PI / 2);
+  return lathe;
+}
+
+// Curved wedge key: a slice of a ring around the OK button, with a dished top
+// and a raised rim. Built in mm around the key's own centre, then rotated to
+// face up, down, left or right.
+const WEDGE_INNER = 5.6;
+const WEDGE_OUTER = 11.68;
+const WEDGE_HALF_SPAN = 0.544;
+const WEDGE_CENTER_DISTANCE = 8.64;
+const WEDGE_ANGLES = { right: 0, up: Math.PI / 2, left: Math.PI, down: Math.PI * 1.5 };
+
+function wedgePoint(radialT, angularT, dip) {
+  const radius = WEDGE_INNER + ((radialT + 1) / 2) * (WEDGE_OUTER - WEDGE_INNER);
+  // pull the outer corners in a little so they read as rounded
+  const cornerPull = 1 - 0.1 * Math.pow(Math.abs(angularT), 6) * Math.pow((radialT + 1) / 2, 3);
+  const angle = angularT * WEDGE_HALF_SPAN * cornerPull;
+  return new THREE.Vector3(radius * Math.cos(angle), radius * Math.sin(angle), dip);
+}
+
+function wedgeGeometry(keyId) {
+  const radialSteps = 14;
+  const angularSteps = 22;
+  const dishDepth = 0.5;
+  const skirtBottom = -1.7;
+  const positions = [];
+  const indices = [];
+  const grid = [];
+  for (let i = 0; i <= radialSteps; i++) {
+    const row = [];
+    for (let j = 0; j <= angularSteps; j++) {
+      const radialT = (i / radialSteps) * 2 - 1;
+      const angularT = (j / angularSteps) * 2 - 1;
+      const dip = -dishDepth * (1 - radialT * radialT) * (1 - angularT * angularT);
+      row.push(wedgePoint(radialT, angularT, dip));
+    }
+    grid.push(row);
+  }
+  const pushVertex = function (v) {
+    positions.push(v.x, v.y, v.z);
+    return positions.length / 3 - 1;
+  };
+  const top = [];
+  for (let i = 0; i <= radialSteps; i++) {
+    const row = [];
+    for (let j = 0; j <= angularSteps; j++) {
+      row.push(pushVertex(grid[i][j]));
+    }
+    top.push(row);
+  }
+  for (let i = 0; i < radialSteps; i++) {
+    for (let j = 0; j < angularSteps; j++) {
+      indices.push(top[i][j], top[i][j + 1], top[i + 1][j]);
+      indices.push(top[i][j + 1], top[i + 1][j + 1], top[i + 1][j]);
+    }
+  }
+  // walls around the outline, straight down to the plate
+  const outline = [];
+  for (let j = 0; j <= angularSteps; j++) {
+    outline.push(grid[0][j]);
+  }
+  for (let i = 1; i <= radialSteps; i++) {
+    outline.push(grid[i][angularSteps]);
+  }
+  for (let j = angularSteps - 1; j >= 0; j--) {
+    outline.push(grid[radialSteps][j]);
+  }
+  for (let i = radialSteps - 1; i >= 1; i--) {
+    outline.push(grid[i][0]);
+  }
+  for (let n = 0; n < outline.length; n++) {
+    const a = outline[n];
+    const b = outline[(n + 1) % outline.length];
+    const a0 = pushVertex(a);
+    const b0 = pushVertex(b);
+    const a1 = pushVertex(new THREE.Vector3(a.x, a.y, skirtBottom));
+    const b1 = pushVertex(new THREE.Vector3(b.x, b.y, skirtBottom));
+    indices.push(a0, a1, b0);
+    indices.push(b0, a1, b1);
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setIndex(indices);
+  // rotate to face the key's direction, then centre on the key's own origin
+  const faceAngle = WEDGE_ANGLES[keyId];
+  geometry.rotateZ(faceAngle);
+  geometry.translate(-WEDGE_CENTER_DISTANCE * Math.cos(faceAngle), -WEDGE_CENTER_DISTANCE * Math.sin(faceAngle), 0);
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
 const KEY_CUR_COLOR = new THREE.Color(0x181b1e);
-const KEY_PL_COLOR = new THREE.Color(0x262c30);
+const KEY_PL_COLOR = new THREE.Color(0x1d2225);
 const GLYPH_CUR_COLOR = new THREE.Color(0xaeb7bd);
 const GLYPH_PL_COLOR = new THREE.Color(0xeef3f0);
 const KEY_GLOW = new THREE.Color(0x3c7a6c);
@@ -2013,7 +2237,7 @@ function buildKeypad() {
   const geo = roundedKeyGeometry();
   for (const spec of KEY_SPECS) {
     const group = new THREE.Group();
-    const mat = new THREE.MeshStandardMaterial({ color: KEY_CUR_COLOR.clone(), roughness: 0.55, metalness: 0.02, emissive: 0x000000 });
+    const mat = new THREE.MeshStandardMaterial({ color: KEY_CUR_COLOR.clone(), roughness: 0.5, metalness: 0.02, emissive: 0x000000, side: THREE.DoubleSide });
     const mesh = new THREE.Mesh(geo, mat);
     mesh.userData.keyId = spec.id;
     group.add(mesh);
@@ -2032,8 +2256,39 @@ function buildKeypad() {
       );
       group.add(glyph);
     }
+    let icon = null;
+    if (spec.icon) {
+      icon = new THREE.Mesh(
+        new THREE.PlaneGeometry(1, 1),
+        new THREE.MeshBasicMaterial({ map: iconTexture(spec.icon), transparent: true, color: GLYPH_PL_COLOR.clone(), depthWrite: false })
+      );
+      icon.userData.keyId = spec.id;
+      icon.visible = false;
+      group.add(icon);
+    }
+    // Planned-only parts, built in millimetres and faded in with morph
+    let plannedShape = null;
+    let ring = null;
+    if (spec.id === "ok") {
+      plannedShape = new THREE.Mesh(roundOkGeometry(), mat);
+      group.add(plannedShape);
+      ring = new THREE.Mesh(
+        new THREE.TorusGeometry(OK_RING_RADIUS, 0.17, 8, 48),
+        new THREE.MeshBasicMaterial({ color: OK_RING_COLOR })
+      );
+      group.add(ring);
+    } else if (spec.id === "up" || spec.id === "down" || spec.id === "left" || spec.id === "right") {
+      plannedShape = new THREE.Mesh(wedgeGeometry(spec.id), mat);
+      plannedShape.userData.keyId = spec.id;
+      group.add(plannedShape);
+    }
+    if (spec.icon) {
+      plannedShape = new THREE.Mesh(roundSmallKeyGeometry(), mat);
+      plannedShape.userData.keyId = spec.id;
+      group.add(plannedShape);
+    }
     root.add(group);
-    keypad.keys.push({ id: spec.id, spec: spec, group: group, mesh: mesh, mat: mat, glyph: glyph, depth: 0, vel: 0, glow: 0, pressAt: -1, hover: 0 });
+    keypad.keys.push({ id: spec.id, spec: spec, group: group, mesh: mesh, mat: mat, glyph: glyph, icon: icon, shape: plannedShape, ring: ring, depth: 0, vel: 0, glow: 0, pressAt: -1, hover: 0 });
   }
   keypad.root = root;
   keypad.center = root.position.clone();
@@ -2072,13 +2327,44 @@ function updateKeypad(now, dt) {
     k.group.position.set(r * MM, u * MM, (k.depth + k.hover * 0.25) * MM);
     k.mesh.scale.set(w * MM, h * MM, hgt * MM);
     k.mesh.position.z = 0;
-    const glyphSize = lerp(3.4, 5.0, morph);
+    const plannedGlyphSize = k.id === "ok" ? 3.8 : 4.2;
+    const glyphSize = lerp(3.4, plannedGlyphSize, morph);
     if (k.spec.glyph) {
       k.glyph.scale.set(glyphSize * MM, glyphSize * MM, 1);
     } else {
       k.glyph.scale.set(w * 0.55 * MM, h * 0.55 * MM * 2.5, 1);
     }
-    k.glyph.position.z = (hgt * 1.12 + 0.12) * MM;
+    if (k.icon) {
+      const iconSize = Math.min(w, h) * 0.72;
+      k.icon.scale.set(iconSize * MM, iconSize * MM, 1);
+      k.icon.position.z = (hgt * 1.12 + 0.14) * MM;
+      k.icon.visible = morph > 0.5;
+      k.glyph.visible = morph <= 0.5;
+    }
+    if (k.spec.plannedOnly) {
+      k.group.visible = morph > 0.5;
+    }
+    let glyphZ = hgt * 1.12 + 0.12;
+    k.glyph.position.z = glyphZ * MM;
+    if (k.shape) {
+      const showPlanned = morph > 0.5;
+      k.shape.visible = showPlanned;
+      if (k.id === "ok") {
+        k.shape.scale.setScalar(MM);
+        k.mesh.visible = !showPlanned;
+        k.ring.visible = showPlanned;
+        k.ring.scale.setScalar(MM);
+        k.ring.position.z = 2.45 * MM;
+      } else if (k.spec.icon) {
+        k.shape.scale.set(w * MM, h * MM, hgt * MM);
+        k.mesh.visible = !showPlanned;
+        k.shape.position.z = 0;
+      } else {
+        k.shape.scale.setScalar(MM);
+        k.mesh.visible = !showPlanned;
+        k.shape.position.z = (hgt * 1.12 + 0.02) * MM;
+      }
+    }
     k.mat.color.copy(KEY_CUR_COLOR).lerp(KEY_PL_COLOR, morph);
     k.mat.emissive.copy(KEY_GLOW).multiplyScalar(k.glow * 0.9 + k.hover * 0.12);
     k.glyph.material.color.copy(GLYPH_CUR_COLOR).lerp(GLYPH_PL_COLOR, morph);
@@ -2381,7 +2667,13 @@ function castFrom(e) {
 }
 
 function keyUnderPointer() {
-  const targets = keypad.keys.map(function (k) {
+  const visibleKeys = keypad.keys.filter(function (k) {
+    return k.group.visible;
+  });
+  const targets = visibleKeys.map(function (k) {
+    if (k.shape && morph > 0.5) {
+      return k.shape;
+    }
     return k.mesh;
   });
   const hits = raycaster.intersectObjects(targets, false);
