@@ -1452,7 +1452,6 @@ function drawPlannedUI(ctx, now) {
       ctx.textAlign = "right";
       ctx.fillText(rows[i][1], SW - 30, y);
     }
-    drawSoftBar(ctx, "Menu", "Feed");
   } else if (st.screen === "list") {
     ctx.fillStyle = PL.text;
     ctx.textAlign = "left";
@@ -1905,7 +1904,7 @@ function buildDisplay() {
   // grip notch: a small rounded tab on the top edge of the bezel, with a dark finger dimple
   const notchShape = new THREE.Shape();
   const notchHalfW = 6 * MM;
-  const notchHeight = 3.2 * MM;
+  const notchHeight = 5.0 * MM;
   notchShape.moveTo(-notchHalfW, 0);
   notchShape.quadraticCurveTo(-notchHalfW, notchHeight, 0, notchHeight);
   notchShape.quadraticCurveTo(notchHalfW, notchHeight, notchHalfW, 0);
@@ -1922,7 +1921,7 @@ function buildDisplay() {
     new THREE.CircleGeometry(1.6 * MM, 24),
     new THREE.MeshBasicMaterial({ color: 0x1d2226 })
   );
-  dimple.position.set(0, DISPLAY.bezelH * MM / 2 + 1.5 * MM, 0.25 * MM);
+  dimple.position.set(0, DISPLAY.bezelH * MM / 2 + 2.4 * MM, 0.25 * MM);
   module.add(dimple);
 
   display.mat = new THREE.MeshStandardMaterial({
