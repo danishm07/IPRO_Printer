@@ -1902,6 +1902,29 @@ function buildDisplay() {
   bezel.position.z = -bezelDepth / 2 + 0.2 * MM;
   module.add(bezel);
 
+  // grip notch: a small rounded tab on the top edge of the bezel, with a dark finger dimple
+  const notchShape = new THREE.Shape();
+  const notchHalfW = 6 * MM;
+  const notchHeight = 3.2 * MM;
+  notchShape.moveTo(-notchHalfW, 0);
+  notchShape.quadraticCurveTo(-notchHalfW, notchHeight, 0, notchHeight);
+  notchShape.quadraticCurveTo(notchHalfW, notchHeight, notchHalfW, 0);
+  notchShape.lineTo(-notchHalfW, 0);
+  const notch = new THREE.Mesh(
+    new THREE.ExtrudeGeometry(notchShape, { depth: bezelDepth, bevelEnabled: false, curveSegments: 16 }),
+    new THREE.MeshStandardMaterial({ color: 0x050607, roughness: 0.6, metalness: 0.05 })
+  );
+  notch.position.set(0, DISPLAY.bezelH * MM / 2 - 0.05 * MM, -bezelDepth + 0.2 * MM);
+  module.add(notch);
+  conceptMeshes.push(notch);
+
+  const dimple = new THREE.Mesh(
+    new THREE.CircleGeometry(1.6 * MM, 24),
+    new THREE.MeshBasicMaterial({ color: 0x1d2226 })
+  );
+  dimple.position.set(0, DISPLAY.bezelH * MM / 2 + 1.5 * MM, 0.25 * MM);
+  module.add(dimple);
+
   display.mat = new THREE.MeshStandardMaterial({
     map: screenTex,
     emissive: 0xffffff,
