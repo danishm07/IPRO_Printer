@@ -544,6 +544,7 @@ h1 {
       <button class="tool" id="btn-spin" type="button" aria-pressed="true">Auto-rotate</button>
       <button class="tool" id="btn-clay" type="button" aria-pressed="false">Clay</button>
       <button class="tool" id="btn-raw" type="button" aria-pressed="false">Raw scan</button>
+      <button class="tool" id="btn-built" type="button" aria-pressed="false">Built model</button>
       <button class="tool" id="btn-present" type="button">Present</button>
       <button class="tool" id="btn-panel" type="button" aria-pressed="true">Details</button>
       <button class="tool" id="btn-keys" type="button" aria-pressed="false">Keys</button>
@@ -954,6 +955,7 @@ function patchMaterial(mat) {
 // =====================================================================
 // Scan models (polished default, raw on demand)
 // =====================================================================
+const builtModel = { group: null, on: false };
 const meshes = [];
 const savedMaps = new Map();
 const loader = new THREE.GLTFLoader();
@@ -1035,7 +1037,7 @@ function showModel(modelKey) {
   currentModel = modelKey;
   for (const k of Object.keys(MODELS)) {
     if (MODELS[k].group) {
-      MODELS[k].group.visible = k === modelKey;
+      MODELS[k].group.visible = k === modelKey && !builtModel.on;
     }
   }
   refreshPickList();
@@ -2696,6 +2698,155 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
+
+
+// =====================================================================
+// Built model: the stock printer rebuilt from simple shapes (from the photo)
+// =====================================================================
+function builtMaterial(hex, roughness) {
+  return new THREE.MeshStandardMaterial({ color: hex, roughness: roughness });
+}
+
+function addBuiltBox(group, material, sizeX, sizeY, sizeZ, posX, posY, posZ) {
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(sizeX * MM, sizeY * MM, sizeZ * MM), material);
+  mesh.position.set(posX * MM, posY * MM, posZ * MM);
+  group.add(mesh);
+  return mesh;
+}
+
+function addBuiltDisc(group, material, radius, height, posX, posY, posZ) {
+  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(radius * MM, radius * MM, height * MM, 28), material);
+  mesh.position.set(posX * MM, posY * MM, posZ * MM);
+  group.add(mesh);
+  return mesh;
+}
+
+function makeBuiltFrontTexture() {
+  const c = document.createElement("canvas");
+  c.width = 1024;
+  c.height = 256;
+  const g = c.getContext("2d");
+  g.fillStyle = "#1a1c1e";
+  g.fillRect(0, 0, 1024, 256);
+  // see-through media window with dark ribs
+  g.fillStyle = "#26292c";
+  g.fillRect(40, 120, 944, 120);
+  g.fillStyle = "#0b0c0d";
+  for (let i = 0; i < 8; i++) {
+    g.fillRect(100 + i * 112, 130, 6, 100);
+  }
+  // orange media guides
+  g.fillStyle = "#c9781f";
+  g.fillRect(300, 120, 22, 70);
+  g.fillRect(700, 120, 22, 70);
+  g.fillStyle = "#e8e8e8";
+  g.font = "bold 40px Arial, sans-serif";
+  g.textAlign = "center";
+  g.fillText("ZEBRA", 512, 52);
+  g.font = "22px Arial, sans-serif";
+  g.fillText("ZQ630 Plus", 512, 82);
+  g.font = "bold 22px Arial, sans-serif";
+  g.textAlign = "left";
+  g.fillText("Wi-Fi", 50, 70);
+  g.textAlign = "right";
+  g.fillText("UHF RFID", 975, 70);
+  const tex = new THREE.CanvasTexture(c);
+  tex.encoding = THREE.sRGBEncoding;
+  return tex;
+}
+
+function buildBuiltModel() {
+  const group = new THREE.Group();
+  const black = builtMaterial(0x17191b, 0.75);
+  const rubber = builtMaterial(0x0d0e0f, 0.9);
+  const panel = builtMaterial(0x202326, 0.6);
+  const steel = new THREE.MeshStandardMaterial({ color: 0xb9c0c4, roughness: 0.3, metalness: 0.8 });
+  const yellow = builtMaterial(0xf2b705, 0.5);
+
+  // lower body (media bay) and upper body (display and keypad end)
+  addBuiltBox(group, black, 90, 62, 162, -47, 31, 0);
+  addBuiltBox(group, black, 92, 72, 116, 46, 36, 0);
+  // rubber end bumpers at the keypad corners
+  addBuiltBox(group, rubber, 32, 85, 30, 76, 42.5, -46);
+  addBuiltBox(group, rubber, 32, 85, 30, 76, 42.5, 46);
+  // slots in the bumpers
+  addBuiltBox(group, black, 6, 2, 8, 88, 85.2, -46);
+  addBuiltBox(group, black, 6, 2, 8, 88, 85.2, 46);
+  // raised top panel
+  addBuiltBox(group, panel, 80, 2, 84, 40, 73, 0);
+
+  // screen with the stock screen picture
+  const screenMat = new THREE.MeshStandardMaterial({ map: screenTex, emissive: 0xffffff, emissiveMap: screenTex, emissiveIntensity: 0.8, roughness: 0.3 });
+  addBuiltBox(group, rubber, 46, 1.5, 42, 34, 74.5, 0);
+  const screen = new THREE.Mesh(new THREE.PlaneGeometry(36 * MM, 30 * MM), screenMat);
+  screen.rotation.x = -Math.PI / 2;
+  screen.rotation.z = -Math.PI / 2;
+  screen.position.set(34 * MM, 75.4 * MM, 0);
+  group.add(screen);
+
+  // navigation pad: four arrows around a round OK button, plus two soft keys
+  addBuiltDisc(group, builtMaterial(0x2a2d30, 0.6), 4.5, 2, 62, 74.5, 0);
+  addBuiltBox(group, builtMaterial(0x2a2d30, 0.6), 7, 2, 7, 69, 74.5, 0);
+  addBuiltBox(group, builtMaterial(0x2a2d30, 0.6), 7, 2, 7, 55, 74.5, 0);
+  addBuiltBox(group, builtMaterial(0x2a2d30, 0.6), 7, 2, 7, 62, 74.5, -9);
+  addBuiltBox(group, builtMaterial(0x2a2d30, 0.6), 7, 2, 7, 62, 74.5, 9);
+  addBuiltBox(group, builtMaterial(0x2a2d30, 0.6), 5, 2, 9, 60, 74.5, -21);
+  addBuiltBox(group, builtMaterial(0x2a2d30, 0.6), 5, 2, 9, 60, 74.5, 21);
+  // power and feed indicator lights
+  addBuiltDisc(group, new THREE.MeshStandardMaterial({ color: 0x3ccf7a, emissive: 0x1a7a44 }), 2.2, 1, 86, 74.2, -10);
+  addBuiltDisc(group, new THREE.MeshStandardMaterial({ color: 0x3ccf7a, emissive: 0x1a7a44 }), 2.8, 1, 86, 74.2, 10);
+
+  // platen and tear bar across the media opening
+  addBuiltBox(group, steel, 8, 4, 118, -4, 63, 0);
+  addBuiltBox(group, steel, 4, 3, 118, -14, 62, 0);
+  addBuiltBox(group, rubber, 16, 3, 118, -12, 62.5, 0);
+
+  // front face with window, logo and ribs
+  const frontMat = new THREE.MeshStandardMaterial({ map: makeBuiltFrontTexture(), roughness: 0.6 });
+  const front = new THREE.Mesh(new THREE.PlaneGeometry(150 * MM, 37.5 * MM), frontMat);
+  front.rotation.y = -Math.PI / 2;
+  front.position.set(-92.2 * MM, 36 * MM, 0);
+  group.add(front);
+  // yellow media-door latch on the front
+  addBuiltBox(group, yellow, 4, 5, 28, -94, 48, 0);
+
+  // yellow side latch with its dark guard
+  addBuiltBox(group, rubber, 26, 36, 6, 8, 40, -83);
+  addBuiltBox(group, yellow, 20, 18, 7, 6, 40, -86);
+  // side port cover and the thin dark slot beside the latch
+  addBuiltBox(group, panel, 14, 22, 2, 36, 40, -81.5);
+
+  group.visible = false;
+  scene.add(group);
+  builtModel.group = group;
+}
+
+function setBuiltModel(on) {
+  builtModel.on = on;
+  if (builtModel.group === null) {
+    buildBuiltModel();
+  }
+  builtModel.group.visible = on;
+  for (const k of Object.keys(MODELS)) {
+    if (MODELS[k].group) {
+      MODELS[k].group.visible = !on && k === currentModel;
+    }
+  }
+  // hide the screen, keypad and port overlays that sit on the scan
+  for (const child of scene.children) {
+    if (!child.isLight && child !== builtModel.group && child !== MODELS.polished.group && child !== MODELS.raw.group) {
+      child.visible = !on;
+    }
+  }
+  refreshPickList();
+}
+
+const builtBtn = document.getElementById("btn-built");
+builtBtn.addEventListener("click", function () {
+  const wantBuilt = builtBtn.getAttribute("aria-pressed") !== "true";
+  builtBtn.setAttribute("aria-pressed", String(wantBuilt));
+  setBuiltModel(wantBuilt);
+});
 
 // =====================================================================
 // Boot
